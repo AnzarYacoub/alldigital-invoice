@@ -39,15 +39,13 @@
             </button>
 
             <div class="navbar-brand">
-                {# Product brand only — the active company name lives in the company
-                   switcher in the top navbar (see Menu/top.html.twig), not here. #}
+                {# Product brand text only — no icon/monogram, and the active company
+                   name lives in the company switcher in the top navbar (see
+                   Menu/top.html.twig), not here. #}
                 <a href="{{ path('_dashboard') }}" aria-label="{{ constant('SolidInvoice\\CoreBundle\\SolidInvoiceCoreBundle::APP_NAME') }}" class="d-flex align-items-center text-decoration-none link-white">
-                    {{ app_logo(showDefault: true, showOnlyAppIcon: true) }}
-                    <small class="navbar-brand-text-lines d-flex flex-column text-wrap lh-sm text-start">
-                        {% for part in constant('SolidInvoice\\CoreBundle\\SolidInvoiceCoreBundle::APP_NAME')|split(' ', 2) %}
-                            <span>{{ part }}</span>
-                        {% endfor %}
-                    </small>
+                    <span class="navbar-brand-wordmark text-wrap lh-sm">
+                        {{- constant('SolidInvoice\\CoreBundle\\SolidInvoiceCoreBundle::APP_NAME') -}}
+                    </span>
                 </a>
             </div>
 

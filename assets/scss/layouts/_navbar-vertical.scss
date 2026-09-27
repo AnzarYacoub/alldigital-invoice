@@ -18,22 +18,23 @@
     border-right: 1px solid var(--swp-gray-800);
     box-shadow: none;
 
-    // Brand: logo + product name at the top of the sidebar.
+    // Brand: product name only at the top of the sidebar (no icon/monogram —
+    // the active company lives in the top navbar switcher instead).
 
     .navbar-brand {
         color: var(--swp-gray-50);
         font-weight: var(--swp-font-semibold);
     }
 
-    // Compact two-line product wordmark ("AllDigital" / "Invoice") shown next to
-    // the logo (or the text-only logo fallback) in the collapsed sidebar rail.
-    // Kept small and tight so it never forces the brand row to wrap onto the
-    // nav items below it, at both desktop and the mobile breakpoint above.
-    .navbar-brand-text-lines {
-        font-size: 0.8125rem;
-        line-height: 1.15;
+    // Product wordmark text. Sized to fit "AllDigital Invoice" on one line at
+    // typical desktop sidebar widths; wraps cleanly to two lines (rather than
+    // clipping) if the rail is ever narrower, e.g. on small mobile widths.
+    .navbar-brand-wordmark {
+        display: inline-block;
+        font-size: 1rem;
+        line-height: 1.2;
         font-weight: var(--swp-font-semibold);
-        white-space: nowrap;
+        overflow-wrap: normal;
     }
 
     .navbar-brand-autodark {

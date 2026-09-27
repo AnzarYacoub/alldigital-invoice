@@ -25,6 +25,17 @@
         font-weight: var(--swp-font-semibold);
     }
 
+    // Compact two-line product wordmark ("AllDigital" / "Invoice") shown next to
+    // the logo (or the text-only logo fallback) in the collapsed sidebar rail.
+    // Kept small and tight so it never forces the brand row to wrap onto the
+    // nav items below it, at both desktop and the mobile breakpoint above.
+    .navbar-brand-text-lines {
+        font-size: 0.8125rem;
+        line-height: 1.15;
+        font-weight: var(--swp-font-semibold);
+        white-space: nowrap;
+    }
+
     .navbar-brand-autodark {
         filter: none;
     }

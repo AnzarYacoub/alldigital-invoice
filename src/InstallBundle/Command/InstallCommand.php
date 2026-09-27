@@ -101,7 +101,7 @@ class InstallCommand extends Command
             ->addOption('admin-password', null, InputOption::VALUE_REQUIRED, 'The password of admin user')
             ->addOption('admin-email', null, InputOption::VALUE_REQUIRED, 'The email address of admin user')
             ->addOption('locale', null, InputOption::VALUE_REQUIRED, 'The locale to use')
-            ->addOption('application-url', null, InputOption::VALUE_REQUIRED, 'The URL where this SolidInvoice instance will be accessible (including protocol, e.g. https://invoices.example.com). Use `bin/console secrets:set SOLIDINVOICE_APPLICATION_URL` to update this after installation.')
+            ->addOption('application-url', null, InputOption::VALUE_REQUIRED, 'The URL where this AllDigital Invoice instance will be accessible (including protocol, e.g. https://invoices.example.com). Use `bin/console secrets:set SOLIDINVOICE_APPLICATION_URL` to update this after installation.')
             ->addOption('disable-telemetry', null, InputOption::VALUE_NONE, 'Disable sending anonymous usage statistics');
     }
 

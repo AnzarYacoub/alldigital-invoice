@@ -201,7 +201,7 @@ final class TwoFactorSettings extends AbstractController
         // (which may return hashed codes or be stale)
         $codes = $this->getUser()->getBackupCodes();
 
-        $content = "SolidInvoice - Two-Factor Authentication Backup Codes\n";
+        $content = "AllDigital Invoice - Two-Factor Authentication Backup Codes\n";
         $content .= 'Generated: ' . Carbon::now()->format('Y-m-d H:i:s') . "\n";
         $content .= str_repeat('=', 50) . "\n\n";
 
@@ -215,7 +215,7 @@ final class TwoFactorSettings extends AbstractController
 
         $this->dispatchBrowserEvent('download:file', [
             'content' => $content,
-            'filename' => 'solidinvoice-backup-codes-' . Carbon::now()->format('Y-m-d') . '.txt',
+            'filename' => 'alldigital-invoice-backup-codes-' . Carbon::now()->format('Y-m-d') . '.txt',
             'type' => 'text/plain',
         ]);
 

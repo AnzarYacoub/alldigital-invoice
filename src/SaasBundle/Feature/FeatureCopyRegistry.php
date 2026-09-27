@@ -60,7 +60,7 @@ final readonly class FeatureCopyRegistry
             Feature::TeamSeats => new FeatureCopy(
                 icon: 'tabler:users-group',
                 headline: 'Invite your team',
-                description: 'Bring teammates into SolidInvoice so quoting, invoicing and follow-up stop being a one-person job.',
+                description: 'Bring teammates into AllDigital Invoice so quoting, invoicing and follow-up stop being a one-person job.',
                 bullets: [
                     'Multiple seats with role-based access',
                     'Shared client and invoice history',
@@ -100,7 +100,7 @@ final readonly class FeatureCopyRegistry
             Feature::AutomatedReminders => new FeatureCopy(
                 icon: 'tabler:bell-ringing',
                 headline: 'Automated payment reminders',
-                description: 'Stop chasing invoices manually. SolidInvoice nudges clients on the schedule you choose until they pay.',
+                description: 'Stop chasing invoices manually. AllDigital Invoice nudges clients on the schedule you choose until they pay.',
                 bullets: [
                     'Configurable reminder cadence',
                     'Custom email copy per stage',
@@ -120,17 +120,17 @@ final readonly class FeatureCopyRegistry
             Feature::CustomBranding => new FeatureCopy(
                 icon: 'tabler:palette',
                 headline: 'Brand it as your own',
-                description: 'Replace SolidInvoice branding on the client portal, PDFs and emails so every touchpoint looks like you.',
+                description: 'Replace AllDigital Invoice branding on the client portal, PDFs and emails so every touchpoint looks like you.',
                 bullets: [
                     'Custom logo on quotes, invoices and emails',
-                    'Hide "Powered by SolidInvoice"',
+                    'Hide "Powered by AllDigital Invoice"',
                     'Branded client-portal experience',
                 ],
             ),
             Feature::RestApiAccess => new FeatureCopy(
                 icon: 'tabler:plug-connected',
                 headline: 'Programmatic access via REST API',
-                description: 'Wire SolidInvoice into your stack — sync clients, push invoices, automate billing from anywhere.',
+                description: 'Wire AllDigital Invoice into your stack — sync clients, push invoices, automate billing from anywhere.',
                 bullets: [
                     'Full REST API (JSON-LD, HAL, JSON, XML)',
                     'API tokens with revocation',
@@ -140,7 +140,7 @@ final readonly class FeatureCopyRegistry
             Feature::McpAccess => new FeatureCopy(
                 icon: 'tabler:robot',
                 headline: 'Let AI agents work for you',
-                description: 'Give Claude, Cursor or any MCP-aware agent secure access to your SolidInvoice data so they can quote, invoice and report on your behalf.',
+                description: 'Give Claude, Cursor or any MCP-aware agent secure access to your AllDigital Invoice data so they can quote, invoice and report on your behalf.',
                 bullets: [
                     'Native Model Context Protocol server',
                     'OAuth-style scoped agent access',
@@ -150,7 +150,7 @@ final readonly class FeatureCopyRegistry
             Feature::CustomDomain => new FeatureCopy(
                 icon: 'tabler:world',
                 headline: 'Use your own domain',
-                description: 'Serve the client portal from billing.yourcompany.com instead of a SolidInvoice subdomain — the kind of polish clients notice.',
+                description: 'Serve the client portal from billing.yourcompany.com instead of an AllDigital Invoice subdomain — the kind of polish clients notice.',
                 bullets: [
                     'CNAME any domain you own',
                     'Automatic TLS certificates',

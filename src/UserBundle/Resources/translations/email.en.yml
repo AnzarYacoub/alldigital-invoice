@@ -28,7 +28,7 @@ email:
 
 invitation:
     title: 'Invitation to join %company%'
-    message: 'You have been invited to join %company% on SolidInvoice.'
+    message: 'You have been invited to join %company% on AllDigital Invoice.'
     instructions: 'Click the button below to set your password and join the team.'
     company: Company
     email: 'Your Email'
@@ -37,7 +37,7 @@ invitation:
     info: 'If you weren''t expecting this invitation, you can safely ignore this email.'
     reminder:
         title: 'Your invitation to join %company% is about to expire'
-        message: 'Your invitation to join %company% on SolidInvoice will expire in 2 days.'
+        message: 'Your invitation to join %company% on AllDigital Invoice will expire in 2 days.'
         instructions: 'Click the button below to accept your invitation before it expires.'
         expires: 'Expires'
         info: 'If you no longer wish to join, you can safely ignore this email and the invitation will expire automatically.'

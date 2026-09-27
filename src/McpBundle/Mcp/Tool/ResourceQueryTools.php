@@ -52,7 +52,7 @@ final readonly class ResourceQueryTools
      *
      * @return array{results: list<array<string, mixed>>, page: int, items_per_page: int, total: int, resource: string}
      */
-    #[McpTool(name: 'list_resource', description: 'List records of a SolidInvoice resource with optional filters and pagination.')]
+    #[McpTool(name: 'list_resource', description: 'List records of an AllDigital Invoice resource with optional filters and pagination.')]
     #[McpScopeRequired(McpScope::Read)]
     public function listResource(
         string $resource,
@@ -112,7 +112,7 @@ final readonly class ResourceQueryTools
      *
      * @return array<string, mixed>
      */
-    #[McpTool(name: 'get_resource', description: 'Fetch a single SolidInvoice record by ID.')]
+    #[McpTool(name: 'get_resource', description: 'Fetch a single AllDigital Invoice record by ID.')]
     #[McpScopeRequired(McpScope::Read)]
     public function getResource(string $resource, string $id): array
     {

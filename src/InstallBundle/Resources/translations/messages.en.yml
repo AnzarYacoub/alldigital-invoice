@@ -49,5 +49,5 @@ installation:
         user_exists: 'The database already contains an admin user.'
     finish:
         success: Success
-        success_message: 'You have successfully installed SolidInvoice!'
+        success_message: 'You have successfully installed AllDigital Invoice!'
         login: 'Log In Now'

@@ -73,7 +73,7 @@ final readonly class DownloadExport
         $response = new BinaryFileResponse($absolutePath);
         $response->setContentDisposition(
             HeaderUtils::DISPOSITION_ATTACHMENT,
-            sprintf('solidinvoice-export-%s.zip', $job->getCreatedAt()->format('Y-m-d')),
+            sprintf('alldigital-invoice-export-%s.zip', $job->getCreatedAt()->format('Y-m-d')),
         );
         $response->headers->set('Content-Type', 'application/zip');
 

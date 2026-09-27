@@ -51,7 +51,7 @@ class UserAccountStep extends AbstractType
                 'required' => true,
                 'default_protocol' => null,
                 'label' => 'Application URL',
-                'help' => 'The URL where this SolidInvoice instance is accessible. Include the protocol (http:// or https://).',
+                'help' => 'The URL where this AllDigital Invoice instance is accessible. Include the protocol (http:// or https://).',
                 'constraints' => [
                     new NotBlank(),
                     new Url(protocols: ['http', 'https']),
@@ -85,7 +85,7 @@ class UserAccountStep extends AbstractType
                 'required' => false,
                 'data' => true,
                 'label' => 'Send anonymous usage statistics',
-                'help' => 'Help us improve SolidInvoice by sharing anonymous usage data. No personal or business information is ever collected.',
+                'help' => 'Help us improve AllDigital Invoice by sharing anonymous usage data. No personal or business information is ever collected.',
             ],
         );
 

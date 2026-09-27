@@ -1,7 +1,7 @@
 mcp:
     consent:
         title: "Authorize application"
-        heading: "%client% wants to access your SolidInvoice account"
+        heading: "%client% wants to access your AllDigital Invoice account"
         redirect: "Callback: %uri%"
         company: "Company"
         permissions: "Permissions requested"

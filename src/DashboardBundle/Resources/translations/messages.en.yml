@@ -70,9 +70,9 @@ dashboard:
 
     # Onboarding Checklist
     checklist:
-        title: 'Get Started with SolidInvoice'
+        title: 'Get Started with AllDigital Invoice'
         banner_title: 'Complete Your Setup'
-        banner_description: 'Unlock the full power of SolidInvoice by completing these essential setup tasks. Each step helps you maximize efficiency and streamline your invoicing workflow.'
+        banner_description: 'Unlock the full power of AllDigital Invoice by completing these essential setup tasks. Each step helps you maximize efficiency and streamline your invoicing workflow.'
         subtitle: '%completed% of %total% tasks complete'
         success_title: '🎉 Setup Complete!'
         success_message: 'You''re ready to invoice like a pro! Your account is fully configured and you''re all set to manage clients, send invoices, and track payments.'
@@ -110,7 +110,7 @@ dashboard:
             description: 'Accept online payments from clients'
         activate_subscription:
             name: 'Activate Your Subscription'
-            description: 'Unlock full access and continue using SolidInvoice'
+            description: 'Unlock full access and continue using AllDigital Invoice'
 
     # Legacy keys (kept for compatibility)
     create:

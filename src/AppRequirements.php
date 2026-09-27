@@ -41,8 +41,8 @@ class AppRequirements extends SymfonyRequirements
             PHP_VERSION_ID >= 80400,
             sprintf('PHP version must be at least %s (%s installed)', '8.4.0', PHP_VERSION),
             sprintf(
-                'You are running PHP version "<strong>%s</strong>", but SolidInvoice needs at least PHP "<strong>%s</strong>" to run.
-            Before using SolidInvoice, upgrade your PHP installation, preferably to the latest version.',
+                'You are running PHP version "<strong>%s</strong>", but AllDigital Invoice needs at least PHP "<strong>%s</strong>" to run.
+            Before using AllDigital Invoice, upgrade your PHP installation, preferably to the latest version.',
                 PHP_VERSION,
                 '8.4.0',
             ),

@@ -33,7 +33,7 @@ final class ConfigProvider implements ProviderInterface
             new Config(
                 'system/general/hide_powered_by',
                 '0',
-                'Hide "Powered by SolidInvoice" text in invoices and quotes.',
+                'Hide "Powered by AllDigital Invoice" text in invoices and quotes.',
                 CheckboxType::class,
                 ['feature_gated' => Feature::CustomBranding->value]
             ),

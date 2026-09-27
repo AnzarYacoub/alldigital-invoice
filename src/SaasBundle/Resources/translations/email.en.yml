@@ -1,12 +1,12 @@
 onboarding:
     signature:
         greeting: See you inside,
-        team: — The SolidInvoice team
+        team: — The AllDigital Invoice team
     footer:
         tagline: Invoicing for freelancers and small businesses.
-        reason: You're receiving this because you signed up for SolidInvoice.
+        reason: You're receiving this because you signed up for AllDigital Invoice.
     welcome:
-        subject: "Welcome to SolidInvoice — let's get you paid"
+        subject: "Welcome to AllDigital Invoice — let's get you paid"
         eyebrow: Your trial just started
         heading: "Good to have you, %name%."
         lede: "Your trial is live. Over the next few emails we'll walk you through getting your first invoice paid — step by step, starting now."
@@ -33,7 +33,7 @@ onboarding:
         heading: "No client, no invoice. Let's fix that."
         lede: "Your client list is where everything starts. Add one client and you can immediately create quotes, invoices, and track every payment they owe — all in one place."
         mock:
-            url: solidinvoice.app/clients
+            url: invoice.alldigitalgy.com/clients
             header: Your clients
             client1:
                 name: Northbeam Design Studio
@@ -55,7 +55,7 @@ onboarding:
         subject: "Your first invoice is one click away"
         eyebrow: "Step 2 · Your first invoice"
         heading: "Time to send your first invoice."
-        lede: "Sending a professional invoice takes under five minutes. Pick your client, add line items, set a due date — SolidInvoice handles the formatting, delivery, and tracking."
+        lede: "Sending a professional invoice takes under five minutes. Pick your client, add line items, set a due date — AllDigital Invoice handles the formatting, delivery, and tracking."
         mock:
             label: Invoice
             status_sent: Sent
@@ -95,20 +95,20 @@ onboarding:
             2: "Every invoice you send automatically includes a 'Pay now' button."
             3: "Your client pays. You're notified immediately. Invoice status flips to <b style=\"color: #2e963a;\">Paid</b>."
         cta: Connect a payment method
-        ps: "SolidInvoice adds zero fees on top of your payment provider. You pay only what Stripe or PayPal charge."
+        ps: "AllDigital Invoice adds zero fees on top of your payment provider. You pay only what Stripe or PayPal charge."
     recurring_billing:
         subject: "Set up once, get paid every month"
         eyebrow: "Step 4 · Recurring billing"
         heading: "Your best clients pay you every month. Automate it."
-        lede: "Create an invoice once and SolidInvoice sends it automatically on your schedule. Set up payment reminders and overdue invoices get followed up — without you lifting a finger."
+        lede: "Create an invoice once and AllDigital Invoice sends it automatically on your schedule. Set up payment reminders and overdue invoices get followed up — without you lifting a finger."
         how_heading: How it works
         how:
             1: "Create an invoice and mark it as recurring — set the frequency and start date."
-            2: "SolidInvoice sends it automatically on schedule. Your client receives it and pays it."
+            2: "AllDigital Invoice sends it automatically on schedule. Your client receives it and pays it."
             3: "Enable reminders and overdue invoices get followed up automatically — no chasing required."
         compare_heading: Stop doing this manually
         before_heading: Without recurring billing
-        after_heading: With SolidInvoice
+        after_heading: With AllDigital Invoice
         before:
             1: Manual invoicing every billing cycle
             2: Tracking who owes what in a spreadsheet
@@ -136,7 +136,7 @@ onboarding:
                 title: Set your sender name
                 desc: "Customize the name clients see when your invoices land in their inbox."
         cta: Brand your invoices
-        ps: "on the paid plan, you can disable SolidInvoice branding in Settings — your clients will see only your name."
+        ps: "on the paid plan, you can disable AllDigital Invoice branding in Settings — your clients will see only your name."
     trial_about_to_end:
         subject: "Your trial ends tomorrow|Your trial ends in %days% days"
         eyebrow: "Heads up · Trial ending"
@@ -174,7 +174,7 @@ onboarding:
             3: "Automatic payment reminders"
             4: "Online payments via your own Stripe or PayPal account"
             5: "Multiple team members on one account"
-            6: "Backups, updates, and SolidInvoice branding removed from your invoices"
+            6: "Backups, updates, and AllDigital Invoice branding removed from your invoices"
         cta: "Subscribe now"
         fine_print: "Cancel anytime. No surprise fees. Your data restores immediately on subscription."
         ps: "your account locks when the trial ends. Subscribe before that happens to keep sending without interruption."

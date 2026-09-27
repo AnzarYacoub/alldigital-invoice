@@ -81,7 +81,7 @@ security:
     register:
         title: Register
         heading: 'Create your free account'
-        subheading: 'Get started with SolidInvoice today'
+        subheading: 'Get started with AllDigital Invoice today'
         email: 'Email Address'
         password: Password
         password_confirm: 'Confirm Password'
@@ -91,7 +91,7 @@ security:
         terms_agreement: 'I agree to the Terms & Conditions and Privacy Policy'
         features:
             title: 'Start invoicing in minutes'
-            subtitle: 'Join thousands of freelancers and small businesses managing their finances with SolidInvoice'
+            subtitle: 'Join thousands of freelancers and small businesses managing their finances with AllDigital Invoice'
             invoices:
                 title: 'Professional Invoices'
                 description: 'Create beautiful, customizable invoices in seconds'
@@ -230,7 +230,7 @@ notifications:
 onboarding:
     flash:
         invoice_created: "🎉 Your first invoice is ready! You can edit it, send it to your client, or download a PDF."
-        onboarding_complete: "Welcome to SolidInvoice! You're all set up and ready to go."
+        onboarding_complete: "Welcome to AllDigital Invoice! You're all set up and ready to go."
 
 email_verification:
     gate:

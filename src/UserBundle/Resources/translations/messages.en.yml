@@ -80,12 +80,12 @@ security:
         register_now: 'Register Now'
     register:
         title: Register
-        heading: 'Create your free account'
-        subheading: 'Get started with AllDigital Invoice today'
+        heading: 'Start your 14-day free trial'
+        subheading: 'No credit card required — get started with AllDigital Invoice in minutes'
         email: 'Email Address'
         password: Password
         password_confirm: 'Confirm Password'
-        cta: 'Create your free account'
+        cta: 'Start your 14-day free trial'
         submit: Register
         success: 'Your account has been created. Please verify your email address before logging in.'
         terms_agreement: 'I agree to the Terms & Conditions and Privacy Policy'
@@ -113,6 +113,8 @@ security:
             signin: 'Sign in'
             google: 'Sign up with Google'
         placeholders:
+            first_name: 'Jane'
+            last_name: 'Doe'
             email: 'your@email.com'
             company: 'Your Company Name'
             password: 'Create a strong password'

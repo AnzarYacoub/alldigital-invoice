@@ -27,7 +27,7 @@
             <h1 class="subscription-title">{{ 'Your trial has ended'|trans }}</h1>
             <p class="subscription-subtitle">
                 {% trans with {'%days%': subscription.startDate.diff(subscription.endDate).days|abs, '%date%': subscription.endDate|date('F j, Y'), '%price%': subscription.plan.price|formatCurrency('USD')} %}
-                    Your %days%-day trial ended on %date%. Activate your subscription at %price%/month to continue using SolidInvoice.
+                    Your %days%-day trial ended on %date%. Activate your subscription at %price%/month to continue using AllDigital Invoice.
                 {% endtrans %}
             </p>
 

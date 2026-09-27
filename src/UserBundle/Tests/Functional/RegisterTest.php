@@ -96,6 +96,8 @@ final class RegisterTest extends WebTestCase
         self::assertResponseIsSuccessful();
 
         $form = $crawler->filter('form')->form([
+            'register[firstName]' => 'Jane',
+            'register[lastName]' => 'Doe',
             'register[email]' => $email,
             'register[plainPassword]' => self::PASSWORD,
             'register[acceptTerms]' => '1',

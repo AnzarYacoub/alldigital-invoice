@@ -83,6 +83,8 @@ final class Register extends AbstractController
 
             $user = new User();
             $user->setEmail($invitation instanceof UserInvitation ? $invitation->getEmail() : $data->email);
+            $user->setFirstName($data->firstName);
+            $user->setLastName($data->lastName);
             $user->setPassword($data->plainPassword);
 
             // If invited, add to existing company

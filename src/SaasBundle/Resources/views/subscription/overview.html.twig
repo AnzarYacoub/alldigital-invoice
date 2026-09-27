@@ -94,7 +94,7 @@
                             <span class="text-secondary">{{ 'Free'|trans }}</span>
                         {% else %}
                             <span class="text-secondary">
-                                <strong>{{ plan.price|formatCurrency('USD') }}</strong>{{ '/month'|trans }}
+                                <strong>{{ plan.price|formatCurrency('USD') }}</strong>{{ plan.planId ends with '-annual' ? '/year'|trans : '/month'|trans }}
                             </span>
                         {% endif %}
                     </div>

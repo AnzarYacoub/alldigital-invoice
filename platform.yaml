@@ -31,55 +31,55 @@ saas:
         total_clients:
             type: integer
             default: -1
-            description: 'Maximum number of clients per company (-1 = unlimited).'
+            description: 'clients'
         invoices_per_month:
             type: integer
             default: -1
-            description: 'Invoices that can be issued per calendar month (-1 = unlimited).'
+            description: 'invoices'
         team_seats:
             type: integer
             default: -1
-            description: 'Number of user seats per company (-1 = unlimited).'
+            description: 'Team members'
         quotes:
             type: boolean
             default: true
-            description: 'Quote management and conversion-to-invoice workflow.'
+            description: 'Create and send professional quotes'
         online_payments:
             type: boolean
             default: true
-            description: 'Accept online payments via the Payum gateway.'
+            description: 'Online payment support'
         recurring_invoices:
             type: boolean
             default: true
-            description: 'Schedule and auto-generate recurring invoices.'
+            description: 'Recurring invoices, sent automatically'
         automated_reminders:
             type: boolean
             default: true
-            description: 'Automatic invoice reminders for overdue invoices.'
+            description: 'Automatic payment reminders'
         multi_currency:
             type: boolean
             default: true
-            description: 'Issue invoices, quotes and accept payments in multiple currencies.'
+            description: 'Multi-currency invoicing and payments'
         custom_branding:
             type: boolean
             default: true
-            description: 'Custom logo, theme and white-label PDF/email templates.'
+            description: 'Custom invoice branding'
         rest_api_access:
             type: boolean
             default: true
-            description: 'Public REST API access and API token management.'
+            description: 'API access'
         mcp_access:
             type: boolean
             default: true
-            description: 'Model Context Protocol server access for AI agents.'
+            description: 'Advanced integrations'
         custom_domain:
             type: boolean
             default: true
-            description: 'Host SolidInvoice on a custom domain or subdomain.'
+            description: 'Custom domain / branded web address'
         custom_fields:
             type: boolean
             default: true
-            description: 'Capture and display custom fields on clients, contacts, invoices, quotes and recurring invoices.'
+            description: 'Custom fields for clients, invoices and quotes'
 
 ui:
     templates:

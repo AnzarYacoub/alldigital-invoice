@@ -48,6 +48,18 @@
 
                             {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
 
+                            {# Name Fields #}
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    {{ form_widget(form.firstName) }}
+                                    {{ form_errors(form.firstName) }}
+                                </div>
+                                <div class="col-6 mb-3">
+                                    {{ form_widget(form.lastName) }}
+                                    {{ form_errors(form.lastName) }}
+                                </div>
+                            </div>
+
                             {# Email Field #}
                             <div class="mb-3">
                                 {{ form_widget(form.email) }}

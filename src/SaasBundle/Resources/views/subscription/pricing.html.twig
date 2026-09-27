@@ -18,11 +18,14 @@
         <div class="subscription-container">
             <h1 class="subscription-title">{{ 'Choose your plan'|trans }}</h1>
             <p class="subscription-subtitle">
-                {{ 'Pick the plan that fits your needs. You can change it later.'|trans }}
+                {{ 'Every plan includes a 14-day free trial. No credit card required, and you can change plans anytime.'|trans }}
             </p>
 
             <div class="mt-4">
-                {% include '@SolidInvoiceSaas/subscription/_plans_grid.html.twig' with { plans: plans } only %}
+                {% include '@SolidInvoiceSaas/subscription/_tiered_plans_grid.html.twig' with {
+                    tiers: tiers,
+                    currentPlanId: subscription ? subscription.plan.planId : null,
+                } only %}
             </div>
         </div>
     </div>

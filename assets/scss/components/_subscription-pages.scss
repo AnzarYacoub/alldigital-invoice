@@ -482,6 +482,66 @@
 }
 
 // ============================================================================
+// BILLING INTERVAL TOGGLE (pricing page)
+// ============================================================================
+
+.billing-interval-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--swp-space-3);
+    margin-bottom: var(--swp-space-6);
+}
+
+.billing-interval-label {
+    font-size: 0.9375rem;
+    color: var(--swp-text-secondary);
+    transition: color var(--swp-transition-base);
+
+    &.is-active {
+        color: var(--swp-text-primary);
+        font-weight: 600;
+    }
+}
+
+.billing-interval-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 44px;
+    height: 24px;
+    padding: 2px;
+    border: none;
+    border-radius: 999px;
+    background: var(--swp-gray-200, #e9ecef);
+    cursor: pointer;
+    transition: background var(--swp-transition-base);
+
+    &.is-annual {
+        background: var(--tblr-primary, #206bc4);
+    }
+
+    &:focus-visible {
+        outline: none;
+        box-shadow: var(--swp-ring-primary);
+    }
+}
+
+.billing-interval-switch-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: var(--swp-shadow-xs);
+    transition: transform var(--swp-transition-base);
+    transform: translateX(0);
+
+    .billing-interval-switch.is-annual & {
+        transform: translateX(20px);
+    }
+}
+
+// ============================================================================
 // RESPONSIVE DESIGN
 // ============================================================================
 

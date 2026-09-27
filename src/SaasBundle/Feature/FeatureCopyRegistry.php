@@ -82,7 +82,7 @@ final readonly class FeatureCopyRegistry
                 headline: 'Get paid online',
                 description: 'Add a Pay Now button to every invoice using your own Stripe or PayPal keys — you keep the merchant relationship.',
                 bullets: [
-                    'Stripe, PayPal and other Payum gateways',
+                    'Stripe, PayPal and other payment gateways',
                     'Bring your own payment keys',
                     'Auto-marks invoices paid on settlement',
                 ],
@@ -140,10 +140,10 @@ final readonly class FeatureCopyRegistry
             Feature::McpAccess => new FeatureCopy(
                 icon: 'tabler:robot',
                 headline: 'Let AI agents work for you',
-                description: 'Give Claude, Cursor or any MCP-aware agent secure access to your AllDigital Invoice data so they can quote, invoice and report on your behalf.',
+                description: 'Connect AI assistants like Claude or Cursor securely to your AllDigital Invoice data so they can quote, invoice and report on your behalf.',
                 bullets: [
-                    'Native Model Context Protocol server',
-                    'OAuth-style scoped agent access',
+                    'Secure, scoped AI agent access',
+                    'OAuth-style access control',
                     'Works with Claude, Cursor, Cline and more',
                 ],
             ),

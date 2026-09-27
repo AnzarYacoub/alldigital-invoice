@@ -25,6 +25,18 @@ use Symfony\Component\Validator\Constraints\PasswordStrength;
 final class Registration
 {
     #[
+        NotBlank(message: 'Please enter your first name'),
+        Length(max: 255),
+    ]
+    public ?string $firstName = null;
+
+    #[
+        NotBlank(message: 'Please enter your last name'),
+        Length(max: 255),
+    ]
+    public ?string $lastName = null;
+
+    #[
         NotBlank,
         Email(['mode' => Email::VALIDATION_MODE_STRICT]),
     ]

@@ -20,6 +20,7 @@ use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -36,12 +37,29 @@ final class RegisterType extends AbstractType
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
+        $builder->add('firstName', TextType::class, [
+            'required' => true,
+            'label' => 'First name',
+            'attr' => [
+                'placeholder' => $this->translator->trans('security.register.placeholders.first_name'),
+                'autocomplete' => 'given-name',
+                'autofocus' => true,
+            ],
+        ]);
+        $builder->add('lastName', TextType::class, [
+            'required' => true,
+            'label' => 'Last name',
+            'attr' => [
+                'placeholder' => $this->translator->trans('security.register.placeholders.last_name'),
+                'autocomplete' => 'family-name',
+            ],
+        ]);
+
         $emailOptions = [
             'required' => true,
             'attr' => [
                 'placeholder' => $this->translator->trans('security.register.placeholders.email'),
                 'autocomplete' => 'email',
-                'autofocus' => true,
             ],
         ];
 
@@ -65,7 +83,7 @@ final class RegisterType extends AbstractType
         ]);
         $builder->add('acceptTerms', CheckboxType::class, [
             'required' => true,
-            'label' => 'I agree to the  <a href="https://solidinvoice.co/terms-of-service" target="_blank" class="link-primary" rel="external noreferrer noopener">Terms & Conditions</a> and <a href="https://solidinvoice.co/privacy-policy" target="_blank" class="link-primary" rel="external noreferrer noopener">Privacy Policy</a>',
+            'label' => 'I agree to the  <a href="https://alldigitalgy.com/invoice/terms" target="_blank" class="link-primary" rel="external noreferrer noopener">Terms & Conditions</a> and <a href="https://alldigitalgy.com/invoice/privacy" target="_blank" class="link-primary" rel="external noreferrer noopener">Privacy Policy</a>',
             'label_html' => true,
         ]);
         $builder->add('captcha', HiddenType::class, [

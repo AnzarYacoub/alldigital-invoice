@@ -13,70 +13,117 @@ declare(strict_types=1);
 
 namespace SolidInvoice\SaasBundle\DataFixtures\ORM;
 
+use DateInterval;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use SolidWorx\Platform\SaasBundle\Entity\Plan;
 
 /**
- * Seeds the four canonical SaaS plans (Free / Solo / Business / Agency).
+ * Seeds the three canonical AllDigital Invoice SaaS plans (Starter / Business /
+ * Branded), each with a monthly and an annual billing variant.
  *
- * Plan IDs and prices are placeholders for dev/test only — production
- * billing identifiers are managed in the LemonSqueezy dashboard and
- * synced via webhooks. The Free plan uses price 0 and plan_id "0" so
- * `Plan::isFree()` returns true and checkout is skipped.
+ * There is no separate "billing interval" column on Plan (see vendor entity) —
+ * the platform's existing convention is one Plan row per price point, keyed by
+ * planId (e.g. the previous fixture's "solo-monthly"). We follow that same
+ * convention here: a tier is two Plan rows sharing the same display `name`
+ * (so the pricing page can group them) but distinct planId/price — "-monthly"
+ * and "-annual" suffixes.
+ *
+ * Every plan gets a 14-day trialDuration; SaasBundle\EventSubscriber\CompanyEventSubscriber
+ * only actually starts a trial once, on first company creation for a user
+ * (TrialManager::userHasTrial guards re-entry), so setting it uniformly here
+ * is safe and means switching plans during the trial never re-grants one.
+ *
+ * Plan ids and prices are placeholders for dev/test only — production billing
+ * identifiers are managed in the payment provider dashboard and synced via
+ * webhooks (see PaymentIntegrationInterface).
  *
  * @codeCoverageIgnore
  */
 final class LoadPlans extends Fixture
 {
-    public const string REF_FREE = 'plan_free';
+    public const string REF_STARTER_MONTHLY = 'plan_starter_monthly';
 
-    public const string REF_SOLO = 'plan_solo';
+    public const string REF_STARTER_ANNUAL = 'plan_starter_annual';
 
-    public const string REF_BUSINESS = 'plan_business';
+    public const string REF_BUSINESS_MONTHLY = 'plan_business_monthly';
 
-    public const string REF_AGENCY = 'plan_agency';
+    public const string REF_BUSINESS_ANNUAL = 'plan_business_annual';
+
+    public const string REF_BRANDED_MONTHLY = 'plan_branded_monthly';
+
+    public const string REF_BRANDED_ANNUAL = 'plan_branded_annual';
 
     public function load(ObjectManager $manager): void
     {
-        $free = new Plan()
-            ->setName('Free')
-            ->setPlanId('0')
-            ->setPrice(0)
-            ->setDescription('Free forever — basic invoicing for getting started.')
+        $trial = new DateInterval('P14D');
+
+        $starterMonthly = new Plan()
+            ->setName('Starter')
+            ->setPlanId('starter-monthly')
+            ->setPrice(1200)
+            ->setDescription('Everything a solo business needs to quote, invoice and get paid.')
+            ->setTrialDuration($trial)
             ->setDefault(true)
             ->setActive(true);
 
-        $solo = new Plan()
-            ->setName('Solo')
-            ->setPlanId('solo-monthly')
-            ->setPrice(900)
-            ->setDescription('Single freelancer with active client billing.')
+        $starterAnnual = new Plan()
+            ->setName('Starter')
+            ->setPlanId('starter-annual')
+            ->setPrice(12000)
+            ->setDescription('Everything a solo business needs to quote, invoice and get paid.')
+            ->setTrialDuration($trial)
             ->setActive(true);
 
-        $business = new Plan()
+        $businessMonthly = new Plan()
             ->setName('Business')
             ->setPlanId('business-monthly')
-            ->setPrice(1900)
-            ->setDescription('Growing teams that need automation and branding.')
+            ->setPrice(2500)
+            ->setDescription('Growing teams that need recurring billing, automation and branding.')
+            ->setTrialDuration($trial)
             ->setActive(true);
 
-        $agency = new Plan()
-            ->setName('Agency')
-            ->setPlanId('agency-monthly')
-            ->setPrice(3900)
-            ->setDescription('Agencies running unlimited clients on custom domains.')
+        $businessAnnual = new Plan()
+            ->setName('Business')
+            ->setPlanId('business-annual')
+            ->setPrice(25000)
+            ->setDescription('Growing teams that need recurring billing, automation and branding.')
+            ->setTrialDuration($trial)
             ->setActive(true);
 
-        foreach ([$free, $solo, $business, $agency] as $plan) {
+        $brandedMonthly = new Plan()
+            ->setName('Branded')
+            ->setPlanId('branded-monthly')
+            ->setPrice(4000)
+            ->setDescription('White-label AllDigital Invoice on your own domain, with priority support.')
+            ->setTrialDuration($trial)
+            ->setActive(true);
+
+        $brandedAnnual = new Plan()
+            ->setName('Branded')
+            ->setPlanId('branded-annual')
+            ->setPrice(40000)
+            ->setDescription('White-label AllDigital Invoice on your own domain, with priority support.')
+            ->setTrialDuration($trial)
+            ->setActive(true);
+
+        $plans = [
+            self::REF_STARTER_MONTHLY => $starterMonthly,
+            self::REF_STARTER_ANNUAL => $starterAnnual,
+            self::REF_BUSINESS_MONTHLY => $businessMonthly,
+            self::REF_BUSINESS_ANNUAL => $businessAnnual,
+            self::REF_BRANDED_MONTHLY => $brandedMonthly,
+            self::REF_BRANDED_ANNUAL => $brandedAnnual,
+        ];
+
+        foreach ($plans as $plan) {
             $manager->persist($plan);
         }
 
         $manager->flush();
 
-        $this->addReference(self::REF_FREE, $free);
-        $this->addReference(self::REF_SOLO, $solo);
-        $this->addReference(self::REF_BUSINESS, $business);
-        $this->addReference(self::REF_AGENCY, $agency);
+        foreach ($plans as $reference => $plan) {
+            $this->addReference($reference, $plan);
+        }
     }
 }

@@ -27,6 +27,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Ulid;
+use function sprintf;
 use function strtolower;
 
 /**
@@ -86,14 +87,28 @@ final class ChoosePlanAction extends AbstractController
             'is_paid' => ! $plan->isFree(),
         ]);
 
-        // Free plan: no Lemon Squeezy round-trip; safe to commit locally now.
-        if ($plan->isFree()) {
+        // Free plan, or still within the trial period: no Lemon Squeezy
+        // round-trip is possible/needed yet, so commit the plan switch
+        // locally. A trial subscription is never externally billed, so
+        // SubscriptionManager::changePlan() is safe here (it only refuses
+        // ACTIVE + externally-billed subscriptions, which must instead go
+        // through changeActivePlan()). We deliberately do NOT call
+        // activate() for a trial switch — that would end the trial early;
+        // the subscription simply keeps its TRIAL status against the new
+        // plan until the trial ends or real billing is connected.
+        $isTrial = $subscription->getStatus() === SubscriptionStatus::TRIAL;
+
+        if ($plan->isFree() || $isTrial) {
             if ($subscription->getPlan()->getPlanId() !== $plan->getPlanId()) {
                 $this->subscriptionManager->changePlan($subscription, $plan);
             }
 
-            $this->subscriptionManager->activate($subscription);
-            $this->addFlash('success', 'Your free plan is now active.');
+            if ($plan->isFree()) {
+                $this->subscriptionManager->activate($subscription);
+                $this->addFlash('success', 'Your free plan is now active.');
+            } else {
+                $this->addFlash('success', sprintf('You are now on the %s plan for the remainder of your trial.', $plan->getName()));
+            }
 
             return $this->redirectToRoute('_dashboard');
         }

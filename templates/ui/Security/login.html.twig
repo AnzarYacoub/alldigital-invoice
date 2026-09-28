@@ -1,0 +1,116 @@
+{#
+# This file is part of SolidInvoice project.
+#
+# (c) Pierre du Plessis <open-source@solidworx.co>
+#
+# This source file is subject to the MIT license that is bundled
+# with this source code in the file LICENSE.
+#
+# Overrides @Ui/Security/login.html.twig to add a "Forgot password?" link
+# next to the Password label. The vendor template ships this link commented
+# out (pointing at a placeholder "./forgot-password.html"); the app already
+# has a working forgot-password flow (see UserBundle's _user_forgot_password
+# route), it just wasn't linked anywhere in the UI. Everything else in this
+# file is an unmodified copy of the vendor template.
+#}
+
+{% extends '@Ui/Layout/security.html.twig' %}
+
+{% block content %}
+    {% if error %}
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            <div class="alert-icon">
+                {{ ux_icon('tabler:alert-circle') }}
+            </div>
+            {{ error.messageKey|trans(error.messageData, 'security') }}
+            <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+        </div>
+    {% endif %}
+
+    <div class="card card-md" {{ stimulus_controller('@solidworx/platform/loading') }}>
+        <div class="card-body">
+            <h2 class="h2 text-center mb-4">
+                {{ 'Login to your account'|trans }}
+            </h2>
+
+            <form action="{{ options.check_path starts with '/' ? options.check_path : url(options.check_path) }}" method="post" {{ stimulus_action('@solidworx/platform/loading', 'onSubmit', 'submit') }} role="form">
+                <div class="mb-3">
+
+                    <label class="form-label">{{ 'Email address'|trans }}</label>
+                    <div class="input-group input-group-flat">
+                        <div class="input-group-text">
+                            {{ ux_icon('tabler:mail', {width: 24, height: 24}) }}
+                        </div>
+                        <input
+                                type="email"
+                                class="form-control"
+                                placeholder="your@email.com"
+                                autocomplete="username"
+                                required
+                                autofocus
+                                value="{{ last_username }}"
+                                name="{{ options.username_parameter }}"
+                        />
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">
+                        {{ 'Password'|trans }}
+                        <span class="form-label-description">
+                            <a href="{{ path('_user_forgot_password') }}">{{ 'Forgot password?'|trans }}</a>
+                        </span>
+                    </label>
+                    <div class="input-group input-group-flat" {{ stimulus_controller('password-visibility', controllerClasses = { 'hidden': 'd-none' }) }}>
+
+                        <div class="input-group-text">
+                            {{ ux_icon('tabler:password', {width: 24, height: 24}) }}
+                        </div>
+
+                        <input
+                                type="password"
+                                class="form-control"
+                                placeholder="Your password"
+                                autocomplete="current-password"
+                                required
+                                name="{{ options.password_parameter }}"
+                                {{ stimulus_target('password-visibility', 'input') }}
+                        />
+                        <span class="input-group-text">
+                                <a href="#" class="link-secondary" data-bs-toggle="tooltip" aria-label="Show password" data-bs-original-title="Show password" {{ stimulus_action('password-visibility', 'toggle') }}>
+                                    <span {{ stimulus_target('password-visibility', 'icon') }}>
+                                        {{ ux_icon('tabler:eye', {width: 24, height: 24}) }}
+                                    </span>
+                                    <span {{ stimulus_target('password-visibility', 'icon') }} class="d-none">
+                                        {{ ux_icon('tabler:eye-closed', {width: 24, height: 24}) }}
+                                    </span>
+                                </a>
+                            </span>
+
+                    </div>
+                </div>
+                {% if options.always_remember_me is same as(false) and options.remember_me_parameter is not empty %}
+                    <div class="mb-2">
+                        <label class="form-check">
+                            <input type="checkbox" class="form-check-input" name="{{ options.remember_me_parameter }}" />
+                            <span class="form-check-label">{{ 'Remember me on this device'|trans }}</span>
+                        </label>
+                    </div>
+                {% endif %}
+
+                {% if options.enable_csrf %}
+                    <input type="hidden" {{ stimulus_controller('@solidworx/platform/csrf-protection') }} name="{{ options.csrf_parameter }}" value="{{ csrf_token(options.csrf_token_id) }}"/>
+                {% endif %}
+
+                <div class="form-footer">
+                    <button type="submit" class="btn btn-primary w-100">
+                        {{ 'Sign in'|trans }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% block social_login %}
+            {# TODO: Add Social Auth Integration #}
+        {% endblock social_login %}
+    </div>
+{% endblock content %}

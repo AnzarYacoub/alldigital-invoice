@@ -287,6 +287,10 @@ final class CompanyEventSubscriberTest extends TestCase
         yield ['_select_company'];
         yield ['_switch_company'];
         yield ['_create_company'];
+        yield ['_onboarding'];
+        yield ['_user_forgot_password'];
+        yield ['_user_forgot_password_check_email'];
+        yield ['_user_password_reset'];
     }
 
     /**

@@ -27,9 +27,20 @@ final class ConfigProvider implements ProviderInterface
     public function provide(array $data): array
     {
         return [
+            // ROOT CAUSE fix (confirmed live): this used to default to the
+            // literal 'no-reply@solidinvoice.co'. Once seeded into the
+            // settings table (at install), EmailFromListener treats ANY
+            // non-empty email/from_address as authoritative and sends every
+            // system email as SolidInvoice, permanently overriding the
+            // correctly env-driven SOLIDINVOICE_MAILER_SENDER default (see
+            // config/services.php) — so fixing only the env var's brand text
+            // was not enough on its own. Defaulting to null here means a
+            // fresh install leaves this setting empty until an admin
+            // explicitly sets one in Settings > Email, and system email
+            // correctly falls through to SOLIDINVOICE_MAILER_SENDER instead.
             new Config(
                 'email/from_address',
-                'no-reply@solidinvoice.co',
+                null,
                 null,
                 EmailType::class,
                 ['trial_restricted' => true]

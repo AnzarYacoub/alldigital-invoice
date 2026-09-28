@@ -45,8 +45,26 @@ return static function (ContainerConfigurator $containerConfigurator): void {
     $parameters->set('env(SOLIDINVOICE_SENTRY_PROFILES_SAMPLE_RATE)', '0');
     $parameters->set('env(SOLIDINVOICE_SENTRY_HTTP_TIMEOUT)', '2');
     $parameters->set('env(SOLIDINVOICE_SENTRY_HTTP_CONNECT_TIMEOUT)', '2');
+    // Email transport: any Symfony Mailer-supported DSN (smtp://, or a Mailer
+    // bridge like ses://, sendgrid://, mailgun://, postmark://) set via
+    // SOLIDINVOICE_MAILER_DSN in .env.local / the real environment — never
+    // committed here. 'null://null' safely discards mail (no delivery, no
+    // error) so a fresh checkout/CI run still boots without real credentials.
     $parameters->set('env(SOLIDINVOICE_MAILER_DSN)', 'null://null');
-    $parameters->set('env(SOLIDINVOICE_MAILER_SENDER)', 'SolidInvoice <no-reply@solidinvoice.co>');
+    // ROOT CAUSE fix (confirmed live): this default used to be
+    // 'SolidInvoice <no-reply@solidinvoice.co>' — real SolidInvoice branding
+    // baked into a fallback that only kicks in when the env var is unset.
+    // The sender identity itself was already fully env-driven (this is just
+    // the safe placeholder shown until a real domain is configured); only
+    // the brand text in that placeholder was wrong. Real production value
+    // (e.g. 'AllDigital Invoice <no-reply@alldigitalinvoice.com>') belongs
+    // in .env.local, never committed here.
+    $parameters->set('env(SOLIDINVOICE_MAILER_SENDER)', 'AllDigital Invoice <no-reply@example.com>');
+    // Optional Reply-To for all outgoing app email, applied by
+    // EmailFromListener alongside the From address above. Empty disables it
+    // (no Reply-To header added) — set independently from the sender so
+    // support replies can route to a different inbox than the From address.
+    $parameters->set('env(SOLIDINVOICE_MAILER_REPLY_TO)', '');
     $parameters->set('env(SOLIDINVOICE_MESSENGER_DSN)', 'doctrine://default?queue_name=async');
     $parameters->set('env(SOLIDINVOICE_PLATFORM)', null);
 

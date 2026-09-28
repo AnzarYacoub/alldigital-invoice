@@ -16,9 +16,12 @@ namespace SolidInvoice\UserBundle\Tests\Functional;
 use PHPUnit\Framework\Attributes\Group;
 use SolidInvoice\CoreBundle\Test\Traits\DoctrineTestTrait;
 use SolidInvoice\UserBundle\Entity\User;
+use SolidInvoice\UserBundle\Repository\ResetPasswordRequestRepository;
 use SolidInvoice\UserBundle\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use SymfonyCasts\Bundle\ResetPassword\ResetPasswordHelperInterface;
 use Zenstruck\Browser\Test\HasBrowser;
 use Zenstruck\Mailer\Test\Bridge\Zenstruck\Browser\MailerComponent;
 use Zenstruck\Mailer\Test\InteractsWithMailer;
@@ -105,8 +108,62 @@ final class ResetPasswordTest extends WebTestCase
 
         self::assertInstanceOf(User::class, $user);
 
+        // 1. The password was actually changed.
         /** @var UserPasswordHasherInterface $passwordHasher */
         $passwordHasher = self::getContainer()->get(UserPasswordHasherInterface::class);
         self::assertTrue($passwordHasher->isPasswordValid($user, 'newStrongPassword'));
+
+        // 2. The reset request/token was removed and cannot be reused.
+        /** @var ResetPasswordRequestRepository $resetPasswordRequestRepository */
+        $resetPasswordRequestRepository = self::getContainer()->get(ResetPasswordRequestRepository::class);
+        self::assertSame([], $resetPasswordRequestRepository->findBy(['user' => $user]));
+    }
+
+    /**
+     * Regression test for the Create-Company redirect bug: if the person
+     * completing a password reset still has an active, authenticated
+     * session in the same browser (they never explicitly logged out before
+     * starting the reset flow), that session must not survive the reset.
+     * Before this fix, Reset.php never touched the Security token, so the
+     * next request (to /login) was still seen as an authenticated,
+     * company-less user by CompanyEventSubscriber, which bounced it to
+     * /create-company instead of showing the login page.
+     */
+    public function testPasswordResetClearsAnAlreadyAuthenticatedSession(): void
+    {
+        $user = new User()
+            ->setEmail('already-logged-in@example.com')
+            ->setPassword('a-test-password-that-will-be-changed-later');
+        $this->em->persist($user);
+        $this->em->flush();
+
+        /** @var ResetPasswordHelperInterface $resetPasswordHelper */
+        $resetPasswordHelper = self::getContainer()->get(ResetPasswordHelperInterface::class);
+        $resetToken = $resetPasswordHelper->generateResetToken($user);
+
+        $this->browser()
+            // Simulates the user still being logged in when they open the
+            // reset link, without going through the actual login form.
+            ->actingAs($user)
+            ->interceptRedirects()
+            ->visit('/forgot-password/reset/' . $resetToken->getToken())
+            ->assertRedirectedTo('/forgot-password/reset')
+            ->followRedirect()
+            ->assertOn('/forgot-password/reset')
+            ->fillField('change_password_form[plainPassword][first]', 'anotherStrongPassword')
+            ->fillField('change_password_form[plainPassword][second]', 'anotherStrongPassword')
+            ->click('Reset Password')
+            // 4. Redirects to the login route, not /create-company.
+            ->assertRedirectedTo('/login')
+            ->followRedirect()
+            ->assertOn('/login')
+            ->assertSeeIn('.alert-success', 'Your password has been changed successfully. You can now log in.')
+        ;
+
+        // 3. The authenticated Security token was cleared, not carried over.
+        self::assertNull(
+            self::getContainer()->get(TokenStorageInterface::class)->getToken(),
+            'The Security token must be cleared once the password reset completes, even if the user was still logged in when they started it.'
+        );
     }
 }

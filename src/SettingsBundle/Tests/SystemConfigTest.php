@@ -47,7 +47,16 @@ final class SystemConfigTest extends TestCase
         $config = new SystemConfig(date(DATE_ATOM), $this->em->getRepository(Setting::class));
 
         self::assertSame([
-            'email/from_address' => 'no-reply@solidinvoice.co',
+            // ROOT CAUSE fix (confirmed live): MailerBundle's ConfigProvider used
+            // to default 'email/from_address' to the literal
+            // 'no-reply@solidinvoice.co', which DefaultData::createAppConfig()
+            // seeds as the SEEDED VALUE (not just a display default) for every
+            // new company — EmailFromListener then treated that as an explicit
+            // admin-set from-address and sent every transactional email as
+            // SolidInvoice, permanently overriding the correctly env-driven
+            // SOLIDINVOICE_MAILER_SENDER default. Now null until an admin
+            // explicitly sets one in Settings > Email.
+            'email/from_address' => null,
             'email/from_name' => 'SolidInvoice',
             'email/sending_options/provider' => null,
             'invoice/bcc_address' => null,

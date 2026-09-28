@@ -17,9 +17,11 @@ use Doctrine\Persistence\ManagerRegistry;
 use SolidInvoice\UserBundle\Entity\User;
 use SolidInvoice\UserBundle\Form\Type\ChangePasswordFormType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use SymfonyCasts\Bundle\ResetPassword\Controller\ResetPasswordControllerTrait;
 use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
@@ -35,6 +37,7 @@ final class Reset extends AbstractController
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly TranslatorInterface $translator,
         private readonly ManagerRegistry $registry,
+        private readonly Security $security,
     ) {
     }
 
@@ -84,6 +87,24 @@ final class Reset extends AbstractController
 
             // The session is cleaned up after the password has been changed.
             $this->cleanSessionAfterReset();
+
+            // If the person completing this reset is currently authenticated
+            // (e.g. they still had a logged-in session in this browser, or
+            // reset their own password while signed in), that Security token
+            // is untouched by everything above it and would otherwise survive
+            // into the redirect below. Symfony's own CompanyEventSubscriber
+            // then treats the next request as an authenticated, company-less
+            // user and bounces it to Create Company instead of showing the
+            // login form. Explicitly logging out (rather than relying on
+            // Symfony's own credential-change session invalidation, which is
+            // not guaranteed to apply here) guarantees the person always
+            // lands on a clean, anonymous /login. Security::logout() throws
+            // if there is no logged-in user, so this only runs when needed;
+            // it invalidates the session (via SessionLogoutListener), so it
+            // must run BEFORE the flash message below, not after.
+            if ($this->security->getUser() instanceof UserInterface) {
+                $this->security->logout(false);
+            }
 
             $this->addFlash('success', 'Your password has been changed successfully. You can now log in.');
 

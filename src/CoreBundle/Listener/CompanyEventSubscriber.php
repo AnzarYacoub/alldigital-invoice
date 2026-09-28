@@ -103,6 +103,17 @@ final readonly class CompanyEventSubscriber implements EventSubscriberInterface
                 '_switch_company',
                 '_create_company',
                 '_onboarding',
+                // Password reset must stay reachable regardless of whether
+                // the current user (if any) has a company selected/created
+                // yet — otherwise an authenticated, company-less user (e.g.
+                // a freshly-registered test account) gets bounced to
+                // Create Company mid-flow instead of reaching the reset
+                // form. Anonymous visitors were never affected by this: the
+                // redirect only fires when $this->security->getUser() is
+                // non-null, below.
+                '_user_forgot_password',
+                '_user_forgot_password_check_email',
+                '_user_password_reset',
             ],
             true
         );

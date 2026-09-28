@@ -54,6 +54,10 @@ return static function (ContainerConfigurator $containerConfigurator): void {
         ->bind('$installed', env('SOLIDINVOICE_INSTALLED'))
         ->bind('$applicationUrl', env('SOLIDINVOICE_APPLICATION_URL'))
         ->bind('$vault', service('secrets.vault'))
+        // Optional Reply-To applied to all outgoing app email by
+        // EmailFromListener; see SOLIDINVOICE_MAILER_REPLY_TO in
+        // config/services.php for the default and rationale.
+        ->bind('$mailerReplyTo', env('SOLIDINVOICE_MAILER_REPLY_TO'))
     ;
 
     $services

@@ -122,7 +122,7 @@
         "symfony/mailchimp-mailer": "^7.1",
         "symfony/mailer": "^7.1",
         "symfony/mailgun-mailer": "^7.1",
-        "symfony/mailjet-notifier": "^7.1",
+        "symfony/mailjet-notifier": "^8.1",
         "symfony/mattermost-notifier": "^7.1",
         "symfony/mcp-bundle": "^0.8",
         "symfony/mercure-notifier": "^7.1",

@@ -10932,16 +10932,16 @@
         },
         {
             "name": "symfony/contracts",
-            "version": "v3.7.0",
+            "version": "v3.7.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/contracts.git",
-                "reference": "3d8d0c00cf8d2c18fd47a0fbbc4ad6a1d5ede078"
+                "reference": "e31324c9a62c0117df80ee08484f02c27ee0f4e2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/contracts/zipball/3d8d0c00cf8d2c18fd47a0fbbc4ad6a1d5ede078",
-                "reference": "3d8d0c00cf8d2c18fd47a0fbbc4ad6a1d5ede078",
+                "url": "https://api.github.com/repos/symfony/contracts/zipball/e31324c9a62c0117df80ee08484f02c27ee0f4e2",
+                "reference": "e31324c9a62c0117df80ee08484f02c27ee0f4e2",
                 "shasum": ""
             },
             "require": {
@@ -11007,7 +11007,7 @@
                 "standards"
             ],
             "support": {
-                "source": "https://github.com/symfony/contracts/tree/v3.7.0"
+                "source": "https://github.com/symfony/contracts/tree/v3.7.3"
             },
             "funding": [
                 {
@@ -11027,7 +11027,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-05T15:33:14+00:00"
+            "time": "2026-08-04T08:41:16+00:00"
         },
         {
             "name": "symfony/css-selector",

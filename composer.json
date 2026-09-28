@@ -149,7 +149,7 @@
         "symfony/rocket-chat-notifier": "^7.1",
         "symfony/routing": "^7.1",
         "symfony/runtime": "^7.1",
-        "symfony/scheduler": "^7.1",
+        "symfony/scheduler": "^8.1",
         "symfony/security-bundle": "^7.3",
         "symfony/sendgrid-mailer": "^7.1",
         "symfony/serializer": "^7.1",

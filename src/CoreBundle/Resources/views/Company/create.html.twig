@@ -102,7 +102,7 @@
                                                             {% if trialDuration.d > 0 %}{{ '{1} %count% day|]1,Inf[ %count% days'|trans({'%count%': trialDuration.d}, count=trialDuration.d) }}{% endif %}
                                                         {% endset %}
                                                     {% endapply %}
-                                                    {% trans with {'%duration%': trial_label|trim} %}Get full access for %duration%, completely free. No credit card required.{% endtrans %}
+                                                    {% trans with {'%duration%': trial_label|trim} %}Start your %duration% free trial. Your card will only be charged after the trial ends unless you cancel beforehand.{% endtrans %}
                                                 </div>
                                                 {% if planPrice %}
                                                     <div class="d-flex align-items-center gap-2 mt-2">

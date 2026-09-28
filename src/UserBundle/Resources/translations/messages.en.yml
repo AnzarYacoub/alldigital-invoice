@@ -81,7 +81,7 @@ security:
     register:
         title: Register
         heading: 'Start your 14-day free trial'
-        subheading: 'No credit card required — get started with AllDigital Invoice in minutes'
+        subheading: 'Your card will only be charged after the trial ends unless you cancel beforehand'
         email: 'Email Address'
         password: Password
         password_confirm: 'Confirm Password'

@@ -17,8 +17,7 @@ use SolidInvoice\CoreBundle\Company\CompanySelector;
 use SolidInvoice\CoreBundle\Repository\CompanyRepository;
 use SolidInvoice\CoreBundle\Telemetry\Telemetry;
 use SolidInvoice\CoreBundle\Telemetry\TelemetryEvent;
-use Error;
-use SolidWorx\Platform\SaasBundle\Entity\Plan;
+use SolidInvoice\SaasBundle\Plan\PlanTierGrouper;
 use SolidWorx\Platform\SaasBundle\Entity\Subscription;
 use SolidWorx\Platform\SaasBundle\Enum\SubscriptionStatus;
 use SolidWorx\Platform\SaasBundle\Repository\PlanRepositoryInterface;
@@ -26,7 +25,6 @@ use SolidWorx\Platform\SaasBundle\Subscription\SubscriptionProviderInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Ulid;
-use function str_ends_with;
 
 /**
  * @see \SolidInvoice\SaasBundle\Tests\Action\SelectPlanActionTest
@@ -39,6 +37,7 @@ final class SelectPlanAction extends AbstractController
         private readonly CompanyRepository $companyRepository,
         private readonly CompanySelector $companySelector,
         private readonly Telemetry $telemetry,
+        private readonly PlanTierGrouper $planTierGrouper,
     ) {
     }
 
@@ -64,49 +63,38 @@ final class SelectPlanAction extends AbstractController
 
         $this->telemetry->event(TelemetryEvent::SaasPricingPageViewed);
 
+        // ROOT CAUSE (confirmed live): `currentPlanId` used to be derived
+        // straight from `subscription.plan.planId` in pricing.html.twig
+        // itself, with no regard for subscription STATUS. `saas_subscription.plan_id`
+        // is never cleared on cancellation (see CancelSubscriptionAction /
+        // HandyPayWebhookConsumer — it stays the historical record of what
+        // was billed), so a CANCELLED subscriber's old plan kept showing as
+        // a disabled "Current plan" card here — even though that plan is no
+        // longer actually in effect and must be fully selectable again
+        // (including re-selecting the SAME plan, to resubscribe). Computed
+        // here rather than in Twig so both this page and ChangePlanAction's
+        // page share one rule: `currentPlanId` is null whenever there is no
+        // ACTIVE/TRIAL plan to protect from re-selection.
+        $isCancelled = $subscription instanceof Subscription && $subscription->getStatus() === SubscriptionStatus::CANCELLED;
+
+        // ROOT CAUSE (confirmed live): once currentPlanId was nulled for a
+        // CANCELLED subscription (see above), every non-current card fell
+        // back to one single isCancelled-driven "Subscribe again" label in
+        // the partial — so Business/Branded said "Subscribe again" too, even
+        // though the subscriber only ever had Starter. previousPlanId keeps
+        // the historical plan_id available to the template for CTA wording
+        // ONLY (never for the disabled/current-plan state, which stays
+        // driven by currentPlanId alone).
+        $previousPlanId = $isCancelled && $subscription instanceof Subscription ? $subscription->getPlan()->getPlanId() : null;
+
         return $this->render('@SolidInvoiceSaas/subscription/pricing.html.twig', [
             'plans' => $plans,
-            'tiers' => $this->groupPlansByTier($plans),
+            'tiers' => $this->planTierGrouper->groupByTier($plans),
             'subscription' => $subscription,
+            'currentPlanId' => $subscription instanceof Subscription && ! $isCancelled ? $subscription->getPlan()->getPlanId() : null,
+            'isCancelled' => $isCancelled,
+            'previousPlanId' => $previousPlanId,
         ]);
-    }
-
-    /**
-     * Groups plans that share a display name (e.g. "Starter") into their
-     * billing-interval variants, so the pricing page can render one card
-     * per tier with a monthly/yearly toggle instead of one card per Plan
-     * row. There is no dedicated billing-interval column on Plan — by
-     * convention (see LoadPlans fixture) each tier is two rows whose
-     * planId ends in "-monthly" / "-annual"; anything else is treated as
-     * a monthly-only (single-price) tier, which also keeps this working
-     * for a plan that predates the convention.
-     *
-     * @param list<Plan> $plans
-     *
-     * @return array<string, array{monthly: ?Plan, annual: ?Plan}>
-     */
-    private function groupPlansByTier(array $plans): array
-    {
-        $tiers = [];
-
-        foreach ($plans as $plan) {
-            try {
-                $interval = str_ends_with($plan->getPlanId(), '-annual') ? 'annual' : 'monthly';
-            } catch (Error) {
-                // Defensive: Plan::$planId is a non-nullable typed property with
-                // no default, so a Plan instance that never had setPlanId()
-                // called (only seen in isolated unit tests, never in real
-                // fixture/DB-hydrated data, where planId is a NOT NULL unique
-                // column) would otherwise fatally error here. Treat it as a
-                // monthly-only tier instead of crashing the pricing page.
-                $interval = 'monthly';
-            }
-
-            $tiers[$plan->getName()] ??= ['monthly' => null, 'annual' => null];
-            $tiers[$plan->getName()][$interval] = $plan;
-        }
-
-        return $tiers;
     }
 
     private function getSubscription(): ?Subscription

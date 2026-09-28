@@ -16,7 +16,9 @@ use SolidInvoice\CoreBundle\Feature\UpgradePromptProvider;
 use SolidInvoice\DashboardBundle\Checklist\ChecklistItemInterface;
 use SolidInvoice\SaasBundle\Email\SaasEmailVerificationGate;
 use SolidInvoice\SaasBundle\Feature\UpgradePromptRenderer;
+use SolidInvoice\SaasBundle\Integration\HandyPay;
 use SolidInvoice\SaasBundle\SolidInvoiceSaasBundle;
+use SolidWorx\Platform\SaasBundle\Integration\PaymentIntegrationInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 
 return static function (ContainerConfigurator $containerConfigurator): void {
@@ -46,5 +48,13 @@ return static function (ContainerConfigurator $containerConfigurator): void {
     $services->alias(
         UpgradePromptProvider::class,
         UpgradePromptRenderer::class,
+    );
+
+    // AllDigital Invoice's active billing provider. The vendor LemonSqueezy
+    // service is left intact and still compiles (see config/packages/saas/
+    // services.php) — it is simply no longer the interface's alias target.
+    $services->alias(
+        PaymentIntegrationInterface::class,
+        HandyPay::class,
     );
 };

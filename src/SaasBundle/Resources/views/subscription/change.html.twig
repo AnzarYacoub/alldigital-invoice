@@ -8,8 +8,22 @@
  #
  # Variables:
  #   - plans: list<Plan>
+ #   - tiers: array<string, array{monthly: Plan|null, annual: Plan|null}>
+ #     — same shape PlanTierGrouper/SelectPlanAction feed the pricing page;
+ #     ROOT CAUSE fix: this page previously rendered _plans_grid.html.twig
+ #     (a flat, interval-unaware partial) which hardcoded "/month" next to
+ #     every plan's raw price, so annual rows (whose saas_plan.price really
+ #     is the annual total) showed e.g. "$120.00 /month" instead of
+ #     "$120.00 /year". Now reuses _tiered_plans_grid.html.twig — the same
+ #     working monthly/yearly toggle the pricing page already used — so no
+ #     prices are hardcoded here; both intervals still come from saas_plan.
  #   - subscription: Subscription
- #   - currentPlanId: string
+ #   - currentPlanId: string|null — null when the subscription is CANCELLED
+ #     (its plan_id is historical only and must not disable that plan's card)
+ #   - isCancelled: bool — drives the "Subscribe again" vs "Choose %plan%"/"Start free trial" button labels
+ #   - previousPlanId: string|null — the CANCELLED subscription's historical
+ #     plan_id, used ONLY for CTA wording (which single card says
+ #     "Subscribe again" vs "Choose %plan%"), never for disabled/current state
  #}
 
 {% extends '@SolidInvoiceCore/Layout/default.html.twig' %}
@@ -32,9 +46,11 @@
                 </a>
             </div>
 
-            {% include '@SolidInvoiceSaas/subscription/_plans_grid.html.twig' with {
-                plans: plans,
+            {% include '@SolidInvoiceSaas/subscription/_tiered_plans_grid.html.twig' with {
+                tiers: tiers,
                 currentPlanId: currentPlanId,
+                isCancelled: isCancelled,
+                previousPlanId: previousPlanId,
                 actionRoute: 'saas_subscription_change_confirm',
                 csrfToken: 'change_plan',
             } only %}

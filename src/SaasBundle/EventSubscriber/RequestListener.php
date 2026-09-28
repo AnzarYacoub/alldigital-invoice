@@ -166,21 +166,40 @@ final readonly class RequestListener implements EventSubscriberInterface
         }
 
         $checkoutUrl = $this->urlGenerator->generate('saas_subscription_checkout');
+        $endDate = $subscription->getEndDate()->format('F j, Y');
+        $planName = $subscription->getPlan()->getName();
 
-        [$type, $icon, $title, $message, $ctaLabel] = match ($subscription->getStatus()) {
-            SubscriptionStatus::CANCELLED => [
+        // Whether HandyPay already has a real external subscription (sub_...)
+        // for this trial — i.e. the card-required-upfront checkout completed
+        // and a `customer.subscription.created` webhook was processed. When
+        // true, the trial will bill itself automatically; there is nothing
+        // for the user to "activate", so the banner must not say so.
+        $hasExternalBilling = $subscription->isExternallyBilled();
+
+        [$type, $icon, $title, $message, $ctaLabel, $ctaUrl] = match (true) {
+            $subscription->getStatus() === SubscriptionStatus::CANCELLED => [
                 'danger',
                 'tabler:alert-circle',
                 'Subscription Cancelled',
-                'Your subscription has been cancelled. Your access will be revoked on ' . $subscription->getEndDate()->format('F j, Y') . '.',
+                'Your ' . $planName . ' subscription has been cancelled and will not renew or be charged again. You will keep access until ' . $endDate . '.',
                 'Renew Subscription',
+                $checkoutUrl,
             ],
-            SubscriptionStatus::TRIAL => [
+            $subscription->getStatus() === SubscriptionStatus::TRIAL && $hasExternalBilling => [
+                'info',
+                'tabler:clock',
+                'Free Trial Active',
+                'Your ' . $planName . ' trial is active until ' . $endDate . '. You\'ll be charged automatically when the trial ends unless you cancel before then.',
+                'Manage Subscription',
+                $this->urlGenerator->generate('billing_index'),
+            ],
+            default => [
                 'warning',
                 'tabler:clock-hour-4',
                 'Trial Ending Soon',
-                'Your trial is active until ' . $subscription->getEndDate()->format('F j, Y') . '. Please activate your subscription to continue.',
+                'Your trial is active until ' . $endDate . '. Please activate your subscription to continue.',
                 'Activate Subscription',
+                $checkoutUrl,
             ],
         };
 
@@ -190,7 +209,7 @@ final readonly class RequestListener implements EventSubscriberInterface
             'title' => $title,
             'message' => $message,
             'cta_label' => $ctaLabel,
-            'cta_url' => $checkoutUrl,
+            'cta_url' => $ctaUrl,
         ]);
 
         $content = preg_replace(

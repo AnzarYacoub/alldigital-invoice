@@ -15,10 +15,11 @@ namespace SolidInvoice\SaasBundle\Action;
 
 use SolidInvoice\CoreBundle\Company\CompanySelector;
 use SolidInvoice\CoreBundle\Repository\CompanyRepository;
+use SolidInvoice\SaasBundle\Subscription\ExternalBillingPlanChangeGuard;
+use SolidInvoice\SaasBundle\Subscription\PlanChangeGuardResult;
 use SolidWorx\Platform\SaasBundle\Entity\Plan;
 use SolidWorx\Platform\SaasBundle\Entity\Subscription;
 use SolidWorx\Platform\SaasBundle\Enum\SubscriptionStatus;
-use SolidWorx\Platform\SaasBundle\Exception\PaymentIntegrationException;
 use SolidWorx\Platform\SaasBundle\Repository\PlanRepositoryInterface;
 use SolidWorx\Platform\SaasBundle\Subscription\SubscriptionManager;
 use SolidWorx\Platform\SaasBundle\Subscription\SubscriptionProviderInterface;
@@ -35,6 +36,7 @@ final class ConfirmPlanChangeAction extends AbstractController
         private readonly SubscriptionProviderInterface $subscriptionProvider,
         private readonly CompanyRepository $companyRepository,
         private readonly CompanySelector $companySelector,
+        private readonly ExternalBillingPlanChangeGuard $externalBillingGuard,
     ) {
     }
 
@@ -63,7 +65,13 @@ final class ConfirmPlanChangeAction extends AbstractController
             return $this->redirectToRoute('saas_subscription_change');
         }
 
-        if ($plan->getPlanId() === $subscription->getPlan()->getPlanId()) {
+        // Re-selecting the plan already in effect is only a no-op while
+        // that plan is actually still active. Once the subscription has
+        // been CANCELLED, the "same" plan is no longer in effect — it must
+        // be allowed through as a resubscribe, exactly like picking a
+        // different plan (see ExternalBillingPlanChangeGuard below, which
+        // also stands down for a CANCELLED subscription).
+        if ($subscription->getStatus() !== SubscriptionStatus::CANCELLED && $plan->getPlanId() === $subscription->getPlan()->getPlanId()) {
             return $this->redirectToRoute('billing_index');
         }
 
@@ -78,15 +86,35 @@ final class ConfirmPlanChangeAction extends AbstractController
             ]);
         }
 
-        if ($subscription->getStatus() === SubscriptionStatus::ACTIVE && $subscription->isExternallyBilled()) {
-            return $this->handleActivePlanChange($subscription, $plan, $isDowngrade);
+        // ROOT CAUSE (confirmed live) of "changing plan is not saving": this
+        // used to only gate on `status === ACTIVE && isExternallyBilled()`.
+        // A TRIAL subscription with a real HandyPay subscription attached
+        // (the normal state for every paid trial under the
+        // card-required-upfront flow) fell through to the "no external
+        // billing yet" branch below instead, which — for a paid target plan
+        // — redirected to `saas_subscription_checkout`. That route now
+        // refuses to start a second HandyPay subscription once one is
+        // already attached (SubscribeController's duplicate-checkout
+        // guard), so the redirect silently bounced straight back here with
+        // an unrelated flash message and no plan change ever took effect.
+        //
+        // ExternalBillingPlanChangeGuard now handles EVERY externally-billed
+        // subscription the same way regardless of status: a downgrade to
+        // Free safely schedules a real HandyPay cancel-at-period-end (the
+        // one plan-change HandyPay does support today); anything else is
+        // explicitly blocked rather than silently no-op'd, faked locally, or
+        // routed through checkout to spawn a second subscription.
+        $guardResult = $this->externalBillingGuard->handle($subscription, $plan);
+
+        if ($guardResult instanceof PlanChangeGuardResult) {
+            $this->addFlash($guardResult->flashType, $guardResult->message);
+
+            return $this->redirectToRoute('billing_index');
         }
 
-        // From here the subscription is either pending, on a trial, or
-        // already active on the free plan — none of which involve the
-        // payment provider on the existing record yet. The plan switch
-        // is only committed locally for free plans (no LS round-trip);
-        // paid plans defer the switch to webhook confirmation.
+        // From here the subscription has no external billing yet (never
+        // checked out, or currently on the free plan) — safe to commit
+        // locally or send to checkout exactly as before.
         if ($plan->isFree()) {
             $this->subscriptionManager->changePlan($subscription, $plan);
             $this->subscriptionManager->activate($subscription);
@@ -98,28 +126,6 @@ final class ConfirmPlanChangeAction extends AbstractController
         return $this->redirectToRoute('saas_subscription_checkout', [
             ChoosePlanAction::PENDING_PLAN_QUERY_PARAMETER => $plan->getPlanId(),
         ]);
-    }
-
-    private function handleActivePlanChange(Subscription $subscription, Plan $plan, bool $isDowngrade): Response
-    {
-        try {
-            if ($isDowngrade && $plan->isFree()) {
-                $this->subscriptionManager->scheduleDowngrade($subscription, $plan);
-                $this->addFlash(
-                    'success',
-                    'Your plan will be downgraded at the end of the current billing period.',
-                );
-
-                return $this->redirectToRoute('billing_index');
-            }
-
-            $this->subscriptionManager->changeActivePlan($subscription, $plan);
-            $this->addFlash('success', 'Your plan has been updated.');
-        } catch (PaymentIntegrationException $e) {
-            $this->addFlash('error', sprintf('Could not update your plan: %s', $e->getMessage()));
-        }
-
-        return $this->redirectToRoute('billing_index');
     }
 
     private function getSubscription(): ?Subscription

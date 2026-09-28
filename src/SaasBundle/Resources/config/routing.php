@@ -12,6 +12,7 @@ declare(strict_types=1);
  */
 
 use SolidInvoice\SaasBundle\Action\CancelDowngradeAction;
+use SolidInvoice\SaasBundle\Action\CancelSubscriptionAction;
 use SolidInvoice\SaasBundle\Action\ChangePlanAction;
 use SolidInvoice\SaasBundle\Action\ChoosePlanAction;
 use SolidInvoice\SaasBundle\Action\ConfirmPlanChangeAction;
@@ -50,5 +51,9 @@ return static function (RoutingConfigurator $routingConfigurator): void {
 
     $routingConfigurator->add('saas_subscription_cancel_downgrade', '/subscription/cancel-downgrade')
         ->controller(CancelDowngradeAction::class)
+        ->methods(['POST']);
+
+    $routingConfigurator->add('saas_subscription_cancel', '/subscription/cancel')
+        ->controller(CancelSubscriptionAction::class)
         ->methods(['POST']);
 };

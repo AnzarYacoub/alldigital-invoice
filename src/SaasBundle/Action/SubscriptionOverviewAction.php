@@ -59,6 +59,7 @@ final class SubscriptionOverviewAction extends AbstractController
             'isFree' => $subscription->getPlan()->isFree(),
             'isPastDue' => $subscription->getStatus() === SubscriptionStatus::PAST_DUE,
             'isPaused' => $subscription->getStatus() === SubscriptionStatus::PAUSED,
+            'isCancelled' => $subscription->getStatus() === SubscriptionStatus::CANCELLED,
             'hasExternalBilling' => $subscription->isExternallyBilled(),
             'trialDaysRemaining' => $this->trialDaysRemaining($subscription),
         ]);

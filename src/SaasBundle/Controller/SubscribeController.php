@@ -22,6 +22,7 @@ use SolidInvoice\SaasBundle\Action\ChoosePlanAction;
 use SolidInvoice\UserBundle\Entity\User;
 use SolidWorx\Platform\SaasBundle\Entity\Plan;
 use SolidWorx\Platform\SaasBundle\Entity\Subscription;
+use SolidWorx\Platform\SaasBundle\Enum\SubscriptionStatus;
 use SolidWorx\Platform\SaasBundle\Integration\Options;
 use SolidWorx\Platform\SaasBundle\Repository\PlanRepositoryInterface;
 use SolidWorx\Platform\SaasBundle\Subscription\SubscriptionManager;
@@ -59,10 +60,47 @@ class SubscribeController extends AbstractController
             return $this->redirectToRoute('_dashboard');
         }
 
+        // ROOT CAUSE (confirmed against real HandyPay deliveries): this
+        // route had no guard against being reached more than once for the
+        // same local subscription — a double-click, a back-button resubmit,
+        // a second browser tab, or a plan-change attempt on an
+        // already-billed trial (HandyPay has no documented price-change
+        // endpoint to reuse instead; see HandyPay::changePlan()) each called
+        // getCheckoutUrl() again and created a BRAND NEW HandyPay
+        // subscription for the same local row. The local row then received
+        // customer.subscription.* webhook events for multiple different
+        // sub_... ids over time. Once a real external subscription is
+        // STILL LIVE (trial/active/past_due/unpaid/paused), this route must
+        // never start another one — the user has to cancel the existing one
+        // first (CancelSubscriptionAction).
+        //
+        // ROOT CAUSE (confirmed live, second bug fixed here): this guard
+        // originally fired on `isExternallyBilled()` alone — true whenever
+        // ANY `sub_...` id is attached, regardless of status. A CANCELLED
+        // subscription keeps its old (now-ended) `sub_...` id forever (it is
+        // never cleared — see CancelSubscriptionAction/HandyPayWebhookConsumer),
+        // so this guard permanently blocked a genuinely cancelled subscriber
+        // from ever checking out again: every "Subscribe again" attempt
+        // bounced back here with the misleading "you already have an active
+        // subscription" message. Once local state is CANCELLED, the old
+        // external subscription is over, so a fresh checkout is exactly the
+        // right thing to allow — HandyPayWebhookConsumer's authoritative-id
+        // guard is what then adopts the NEW `sub_...` this checkout produces
+        // in place of the old, already-cancelled one.
+        if ($subscription->isExternallyBilled() && $subscription->getStatus() !== SubscriptionStatus::CANCELLED) {
+            $this->addFlash('info', 'You already have an active subscription. Cancel it first if you want to start a new one.');
+
+            return $this->redirectToRoute('billing_index');
+        }
+
+        // Card-required-upfront flow: every paid checkout gets HandyPay's
+        // real 14-day trial_period_days (see HandyPay::checkout()), never a
+        // skipped trial. skipTrial is only for a flow that intentionally
+        // bypasses a trial entirely (not currently used by any caller of
+        // this controller).
         $options = Options::new()
             ->withEmail($user->getEmail())
-            // @TODO: If status is trial, and we want to allow the trial to be extended, skipTrial should be false.
-            ->withSkipTrial(true);
+            ->withSkipTrial(false);
 
         // The chosen plan id (LS variant) is passed in via query parameter
         // from ChoosePlanAction / ConfirmPlanChangeAction. We swap it onto the

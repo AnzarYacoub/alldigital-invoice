@@ -9,7 +9,14 @@
  # Variables:
  #   - subscription: Subscription
  #   - plan: Plan
- #   - isTrial, isFree, isPastDue, isPaused, hasExternalBilling: bool
+ #   - isTrial, isFree, isPastDue, isPaused, isCancelled: bool
+ #   - hasExternalBilling: bool — true once HandyPay has a real external
+ #     subscription (sub_...) for this trial (card-required-upfront checkout
+ #     completed + customer.subscription.created processed). Drives whether
+ #     the trial banner below says "you'll be charged automatically" instead
+ #     of prompting activation. HandyPay itself still has no documented
+ #     customer portal / update-payment-method endpoint; see
+ #     HandyPay::getCustomerPortalUrl().
  #   - trialDaysRemaining: int|null
  #}
 
@@ -56,12 +63,39 @@
                 <div class="alert alert-info" role="alert">
                     {{ ux_icon('tabler:clock', {width: 20, height: 20, class: 'me-2'}) }}
                     {% if trialDaysRemaining is not null and trialDaysRemaining > 0 %}
-                        <strong>{{ '%count% days left in your trial'|trans({'%count%': trialDaysRemaining}) }}</strong> —
-                        {{ 'Pick a paid plan to keep using all features after the trial ends.'|trans }}
+                        {% if hasExternalBilling %}
+                            {# Card was collected upfront and HandyPay already has a real
+                               subscription (sub_...) for this trial — it will bill itself
+                               automatically, so there is nothing to "activate". #}
+                            <strong>{{ 'Your %plan% trial is active until %date%.'|trans({
+                                '%plan%': plan.name,
+                                '%date%': subscription.endDate|date('M j, Y'),
+                            }) }}</strong>
+                            {{ 'You\'ll be charged automatically when the trial ends unless you cancel before then.'|trans }}
+                        {% elseif not isFree %}
+                            <strong>{{ '%count% days left in your trial'|trans({'%count%': trialDaysRemaining}) }}</strong> —
+                            {{ 'Your card will be charged %price% on %date% unless you cancel before then.'|trans({
+                                '%price%': plan.price|formatCurrency('USD'),
+                                '%date%': subscription.endDate|date('M j, Y'),
+                            }) }}
+                        {% else %}
+                            {{ 'Pick a paid plan to keep using all features after the trial ends.'|trans }}
+                        {% endif %}
                     {% else %}
                         <strong>{{ 'Your trial has ended.'|trans }}</strong>
                         {{ 'Choose a plan to continue.'|trans }}
                     {% endif %}
+                </div>
+            {% endif %}
+
+            {% if isCancelled %}
+                <div class="alert alert-warning" role="alert">
+                    {{ ux_icon('tabler:alert-circle', {width: 20, height: 20, class: 'me-2'}) }}
+                    <strong>{{ 'Subscription cancelled'|trans }}</strong> —
+                    {{ 'Your %plan% subscription will not renew and you will not be charged again. You\'ll keep access until %date%.'|trans({
+                        '%plan%': plan.name,
+                        '%date%': subscription.endDate|date('M j, Y'),
+                    }) }}
                 </div>
             {% endif %}
 
@@ -112,6 +146,11 @@
                         {% elseif isFree %}
                             <dt class="col-sm-4 text-secondary">{{ 'Renewal'|trans }}</dt>
                             <dd class="col-sm-8">{{ '—'|trans }}</dd>
+                        {% elseif isCancelled %}
+                            {# Cancelled subscriptions don't renew — "Next renewal" would
+                               be misleading here; this is the end of paid access. #}
+                            <dt class="col-sm-4 text-secondary">{{ 'Access until'|trans }}</dt>
+                            <dd class="col-sm-8">{{ subscription.endDate|date('M j, Y') }}</dd>
                         {% else %}
                             <dt class="col-sm-4 text-secondary">{{ 'Next renewal'|trans }}</dt>
                             <dd class="col-sm-8">{{ subscription.endDate|date('M j, Y') }}</dd>
@@ -123,15 +162,34 @@
                     {% endblock %}
                 </div>
                 <div class="card-footer d-flex flex-wrap gap-2">
-                    <a href="{{ path('saas_subscription_change') }}" class="btn btn-primary">
-                        {{ ux_icon('tabler:arrows-exchange', {width: 18, height: 18}) }}
-                        {{ 'Change plan'|trans }}
-                    </a>
-                    {% if hasExternalBilling %}
-                        <a href="{{ path('saas_subscription_checkout') }}" class="btn btn-outline-secondary">
-                            {{ ux_icon('tabler:credit-card', {width: 18, height: 18}) }}
-                            {{ 'Manage payment method'|trans }}
+                    {% if isCancelled %}
+                        {# ROOT CAUSE fix: this used to always say "Change plan", which is
+                           misleading once the subscription has actually been cancelled —
+                           there's no plan being "changed", the user needs to start a new
+                           subscription. This links to the same change-plan page (it already
+                           lists every plan, including the current one, and now correctly
+                           allows resubscribing to it — see ExternalBillingPlanChangeGuard /
+                           ConfirmPlanChangeAction's same-plan check), just labelled for
+                           what it actually does in this state. #}
+                        <a href="{{ path('saas_subscription_change') }}" class="btn btn-primary">
+                            {{ ux_icon('tabler:rotate-clockwise', {width: 18, height: 18}) }}
+                            {{ 'Subscribe again'|trans }}
                         </a>
+                    {% else %}
+                        <a href="{{ path('saas_subscription_change') }}" class="btn btn-primary">
+                            {{ ux_icon('tabler:arrows-exchange', {width: 18, height: 18}) }}
+                            {{ 'Change plan'|trans }}
+                        </a>
+                        {% if not isFree %}
+                            <form method="post" action="{{ path('saas_subscription_cancel') }}" class="ms-auto"
+                                  onsubmit="return confirm('{{ 'Cancel your subscription? You will keep access until the end of the current billing period.'|trans|e('js') }}');">
+                                <input type="hidden" name="_token" value="{{ csrf_token('cancel_subscription') }}">
+                                <button type="submit" class="btn btn-outline-danger">
+                                    {{ ux_icon('tabler:x', {width: 18, height: 18}) }}
+                                    {{ 'Cancel subscription'|trans }}
+                                </button>
+                            </form>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>

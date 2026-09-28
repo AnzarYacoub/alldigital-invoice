@@ -29,6 +29,7 @@ use SolidInvoice\SaasBundle\Controller\SubscribeController;
 use SolidInvoice\UserBundle\Entity\User;
 use SolidWorx\Platform\SaasBundle\Entity\Plan;
 use SolidWorx\Platform\SaasBundle\Entity\Subscription;
+use SolidWorx\Platform\SaasBundle\Enum\SubscriptionStatus;
 use SolidWorx\Platform\SaasBundle\Integration\PaymentIntegrationInterface;
 use SolidWorx\Platform\SaasBundle\Repository\PlanRepositoryInterface;
 use SolidWorx\Platform\SaasBundle\Repository\SubscriptionRepositoryInterface;
@@ -94,6 +95,123 @@ final class SubscribeControllerTest extends TestCase
 
         self::assertCount(1, $this->bus->messages);
         self::assertSame('saas_checkout_failed', $this->bus->messages[0]->payload['event']);
+    }
+
+    /**
+     * Requirement 6: active/trial subscription still cannot start a
+     * duplicate checkout. This is the ORIGINAL duplicate-checkout guard
+     * (unchanged behaviour) — must keep working exactly as before.
+     */
+    public function testExternallyBilledTrialSubscriptionCannotStartDuplicateCheckout(): void
+    {
+        $response = $this->invokeControllerWithExistingSubscription(SubscriptionStatus::TRIAL, 'sub_live123');
+
+        self::assertInstanceOf(RedirectResponse::class, $response[0]);
+        self::assertSame('/billing/', $response[0]->getTargetUrl());
+        self::assertArrayHasKey('info', $response[1]);
+        self::assertCount(0, $this->bus->messages, 'A blocked duplicate-checkout attempt must never emit saas_checkout_started.');
+    }
+
+    public function testExternallyBilledActiveSubscriptionCannotStartDuplicateCheckout(): void
+    {
+        $response = $this->invokeControllerWithExistingSubscription(SubscriptionStatus::ACTIVE, 'sub_live456');
+
+        self::assertInstanceOf(RedirectResponse::class, $response[0]);
+        self::assertSame('/billing/', $response[0]->getTargetUrl());
+        self::assertArrayHasKey('info', $response[1]);
+    }
+
+    /**
+     * Requirement 4: a cancelled subscription CAN start checkout again —
+     * ROOT CAUSE fix: the duplicate-checkout guard used to fire on
+     * isExternallyBilled() alone (true forever, since the old sub_... id is
+     * never cleared on cancellation), permanently blocking resubscription.
+     */
+    public function testCancelledSubscriptionCanStartCheckoutAgain(): void
+    {
+        $response = $this->invokeControllerWithExistingSubscription(SubscriptionStatus::CANCELLED, 'sub_old_cancelled789');
+
+        self::assertInstanceOf(RedirectResponse::class, $response[0]);
+        self::assertSame(
+            'https://checkout.lemonsqueezy.com/buy/abc',
+            $response[0]->getTargetUrl(),
+            'A cancelled subscription must be allowed to start a fresh checkout, not be bounced back to billing_index.',
+        );
+        self::assertCount(1, $this->bus->messages);
+        self::assertSame('saas_checkout_started', $this->bus->messages[0]->payload['event']);
+    }
+
+    /**
+     * @return array{0: RedirectResponse, 1: array<string, list<string|Stringable>>}
+     */
+    private function invokeControllerWithExistingSubscription(SubscriptionStatus $status, string $externalSubscriptionId): array
+    {
+        $paymentIntegration = $this->createMock(PaymentIntegrationInterface::class);
+        $paymentIntegration->method('checkout')->willReturn('https://checkout.lemonsqueezy.com/buy/abc');
+
+        $plan = new Plan();
+        $plan->setName('Starter');
+        $plan->setPlanId('starter-monthly');
+        $plan->setPrice(1200);
+
+        $subscription = new Subscription();
+        $subscription->setPlan($plan);
+        $subscription->setStatus($status);
+        $subscription->setSubscriptionId($externalSubscriptionId);
+
+        $subscriptionRepository = $this->createMock(SubscriptionRepositoryInterface::class);
+        $subscriptionRepository->method('findOneBy')->willReturn($subscription);
+
+        $subscriptionManager = new SubscriptionManager(
+            $subscriptionRepository,
+            $this->createStub(PlanRepositoryInterface::class),
+            $paymentIntegration,
+        );
+
+        $companySelector = $this->createMock(CompanySelectorInterface::class);
+        $companySelector->method('getCompany')->willReturn(new Ulid());
+
+        $companyRepository = $this->createMock(CompanyRepository::class);
+        $companyRepository->method('find')->willReturn(new Company());
+
+        $controller = new SubscribeController(
+            $subscriptionManager,
+            $companyRepository,
+            $companySelector,
+            $this->createStub(PlanRepositoryInterface::class),
+            $this->createStub(EntityManagerInterface::class),
+            $this->makeTelemetry(),
+        );
+
+        $session = new Session(new MockArraySessionStorage());
+        $request = Request::create('/billing/subscription/activate');
+        $request->setSession($session);
+
+        $requestStack = new RequestStack([$request]);
+
+        $router = $this->createMock(RouterInterface::class);
+        $router->method('generate')->willReturn('/billing/');
+
+        $user = new User();
+        $user->setEmail('test@example.com');
+
+        $token = $this->createMock(TokenInterface::class);
+        $token->method('getUser')->willReturn($user);
+
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $tokenStorage->method('getToken')->willReturn($token);
+
+        $container = new Container();
+        $container->set('request_stack', $requestStack);
+        $container->set('router', $router);
+        $container->set('security.token_storage', $tokenStorage);
+
+        $controller->setContainer($container);
+
+        /** @var RedirectResponse $response */
+        $response = $controller(new Request());
+
+        return [$response, $session->getFlashBag()->all()];
     }
 
     public function testSuccessfulCheckoutEmitsCheckoutStartedTelemetryAndRedirects(): void

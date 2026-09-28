@@ -17,6 +17,8 @@ use SolidInvoice\CoreBundle\Company\CompanySelector;
 use SolidInvoice\CoreBundle\Repository\CompanyRepository;
 use SolidInvoice\CoreBundle\Telemetry\Telemetry;
 use SolidInvoice\CoreBundle\Telemetry\TelemetryEvent;
+use SolidInvoice\SaasBundle\Subscription\ExternalBillingPlanChangeGuard;
+use SolidInvoice\SaasBundle\Subscription\PlanChangeGuardResult;
 use SolidWorx\Platform\SaasBundle\Entity\Plan;
 use SolidWorx\Platform\SaasBundle\Entity\Subscription;
 use SolidWorx\Platform\SaasBundle\Enum\SubscriptionStatus;
@@ -27,7 +29,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Ulid;
-use function sprintf;
 use function strtolower;
 
 /**
@@ -50,6 +51,7 @@ final class ChoosePlanAction extends AbstractController
         private readonly CompanyRepository $companyRepository,
         private readonly CompanySelector $companySelector,
         private readonly Telemetry $telemetry,
+        private readonly ExternalBillingPlanChangeGuard $externalBillingGuard,
     ) {
     }
 
@@ -87,36 +89,56 @@ final class ChoosePlanAction extends AbstractController
             'is_paid' => ! $plan->isFree(),
         ]);
 
-        // Free plan, or still within the trial period: no Lemon Squeezy
-        // round-trip is possible/needed yet, so commit the plan switch
-        // locally. A trial subscription is never externally billed, so
-        // SubscriptionManager::changePlan() is safe here (it only refuses
-        // ACTIVE + externally-billed subscriptions, which must instead go
-        // through changeActivePlan()). We deliberately do NOT call
-        // activate() for a trial switch — that would end the trial early;
-        // the subscription simply keeps its TRIAL status against the new
-        // plan until the trial ends or real billing is connected.
-        $isTrial = $subscription->getStatus() === SubscriptionStatus::TRIAL;
+        // Selecting the plan already in effect is a no-op — UNLESS the
+        // subscription has been CANCELLED, in which case the "same" plan is
+        // no longer actually in effect and this is a resubscribe, which
+        // must be allowed through exactly like picking a different plan
+        // (see ExternalBillingPlanChangeGuard below, which also stands down
+        // for a CANCELLED subscription).
+        if ($subscription->getStatus() !== SubscriptionStatus::CANCELLED && $subscription->getPlan()->getPlanId() === $plan->getPlanId()) {
+            return $this->redirectToRoute('billing_index');
+        }
 
-        if ($plan->isFree() || $isTrial) {
-            if ($subscription->getPlan()->getPlanId() !== $plan->getPlanId()) {
-                $this->subscriptionManager->changePlan($subscription, $plan);
-            }
+        // ROOT CAUSE (Bug 2, ChoosePlanAction side): under the
+        // card-required-upfront flow, a subscription can already carry a
+        // real HandyPay `sub_...` id while still in TRIAL status (not just
+        // ACTIVE). Before this guard, a paid selection here always fell
+        // through to the checkout redirect below — which SubscribeController's
+        // duplicate-checkout guard now correctly refuses once a subscription
+        // is externally billed, bouncing the user back with no plan change
+        // and no explanation. And a free-plan selection would have called
+        // SubscriptionManager::changePlan() directly, which only guards
+        // ACTIVE-and-externally-billed — for TRIAL it would have silently
+        // flipped the local plan to Free while the real HandyPay
+        // subscription kept running uncancelled in the background.
+        // ExternalBillingPlanChangeGuard centralises the safe behaviour
+        // (schedule a real cancellation for a Free downgrade; block any
+        // other paid-to-paid switch, since HandyPay has no price-change
+        // endpoint) and is shared with ConfirmPlanChangeAction so both
+        // plan-selection entry points behave identically.
+        $guardResult = $this->externalBillingGuard->handle($subscription, $plan);
 
-            if ($plan->isFree()) {
-                $this->subscriptionManager->activate($subscription);
-                $this->addFlash('success', 'Your free plan is now active.');
-            } else {
-                $this->addFlash('success', sprintf('You are now on the %s plan for the remainder of your trial.', $plan->getName()));
-            }
+        if ($guardResult instanceof PlanChangeGuardResult) {
+            $this->addFlash($guardResult->flashType, $guardResult->message);
+
+            return $this->redirectToRoute('billing_index');
+        }
+
+        // From here the subscription has no external billing yet (never
+        // checked out, or currently on the free plan) — safe to commit
+        // locally or send to checkout exactly as before.
+        if ($plan->isFree()) {
+            $this->subscriptionManager->changePlan($subscription, $plan);
+            $this->subscriptionManager->activate($subscription);
+            $this->addFlash('success', 'Your free plan is now active.');
 
             return $this->redirectToRoute('_dashboard');
         }
 
         // Paid plan: defer the local plan switch. Pass the desired plan id
         // to the checkout route via query parameter — the webhook handler
-        // commits the switch only if Lemon Squeezy confirms the new
-        // subscription / variant.
+        // commits the switch only once HandyPay confirms the subscription
+        // (never trust the success redirect alone).
         return $this->redirectToRoute('saas_subscription_checkout', [
             self::PENDING_PLAN_QUERY_PARAMETER => $plan->getPlanId(),
         ]);

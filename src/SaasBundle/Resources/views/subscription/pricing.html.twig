@@ -18,13 +18,23 @@
         <div class="subscription-container">
             <h1 class="subscription-title">{{ 'Choose your plan'|trans }}</h1>
             <p class="subscription-subtitle">
-                {{ 'Every plan includes a 14-day free trial. No credit card required, and you can change plans anytime.'|trans }}
+                {{ 'Start your 14-day free trial. Your card will only be charged after the trial ends unless you cancel beforehand.'|trans }}
             </p>
 
             <div class="mt-4">
+                {# ROOT CAUSE fix: currentPlanId/isCancelled are now computed in
+                   SelectPlanAction, not derived from the raw `subscription` here —
+                   a CANCELLED subscription's historical plan_id must NOT make that
+                   plan's card disabled/unselectable. See SelectPlanAction for the
+                   full explanation. previousPlanId carries that same historical
+                   plan_id through separately, for CTA wording only (so only the
+                   subscriber's actual former plan says "Subscribe again", not
+                   every plan). #}
                 {% include '@SolidInvoiceSaas/subscription/_tiered_plans_grid.html.twig' with {
                     tiers: tiers,
-                    currentPlanId: subscription ? subscription.plan.planId : null,
+                    currentPlanId: currentPlanId,
+                    isCancelled: isCancelled,
+                    previousPlanId: previousPlanId,
                 } only %}
             </div>
         </div>

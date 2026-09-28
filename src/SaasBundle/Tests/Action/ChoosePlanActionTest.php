@@ -25,8 +25,10 @@ use SolidInvoice\CoreBundle\Repository\CompanyRepository;
 use SolidInvoice\CoreBundle\Telemetry\Telemetry;
 use SolidInvoice\CoreBundle\Tests\Telemetry\CollectingMessageBus;
 use SolidInvoice\SaasBundle\Action\ChoosePlanAction;
+use SolidInvoice\SaasBundle\Subscription\ExternalBillingPlanChangeGuard;
 use SolidWorx\Platform\SaasBundle\Entity\Plan;
 use SolidWorx\Platform\SaasBundle\Entity\Subscription;
+use SolidWorx\Platform\SaasBundle\Enum\SubscriptionStatus;
 use SolidWorx\Platform\SaasBundle\Integration\PaymentIntegrationInterface;
 use SolidWorx\Platform\SaasBundle\Repository\PlanRepositoryInterface;
 use SolidWorx\Platform\SaasBundle\Repository\SubscriptionRepositoryInterface;
@@ -79,6 +81,97 @@ final class ChoosePlanActionTest extends TestCase
     }
 
     /**
+     * Requirement 4: on the pricing page (`/billing/subscription/plans`,
+     * posting to THIS action), a CANCELLED subscription re-selecting the
+     * SAME plan it was cancelled on must route to a fresh checkout, not be
+     * swallowed as a no-op — this is the ChoosePlanAction-side half of the
+     * same fix already covered for ConfirmPlanChangeAction.
+     */
+    public function testCancelledSubscriptionChoosingTheSamePlanStartsCheckout(): void
+    {
+        $starter = $this->makePlan('Starter', 'starter-monthly', 1200);
+
+        $subscription = new Subscription();
+        $subscription->setPlan($starter);
+        $subscription->setStatus(SubscriptionStatus::CANCELLED);
+        $subscription->setSubscriptionId('sub_old_cancelled');
+
+        [$action, $recorder] = $this->buildActionWithSubscription($subscription, $starter);
+
+        $action($this->makeRequest('starter-monthly'));
+
+        self::assertSame('saas_subscription_checkout', $recorder->lastRoute);
+        self::assertSame(['plan' => 'starter-monthly'], $recorder->lastParameters);
+        self::assertSame(SubscriptionStatus::CANCELLED, $subscription->getStatus());
+    }
+
+    /**
+     * @return array{0: ChoosePlanAction, 1: object{lastRoute: ?string, lastParameters: array<string, mixed>}}
+     */
+    private function buildActionWithSubscription(Subscription $subscription, Plan $targetPlan): array
+    {
+        $planRepository = $this->createMock(PlanRepositoryInterface::class);
+        $planRepository->method('find')->willReturn($targetPlan);
+
+        $subscriptionProvider = $this->createMock(SubscriptionProviderInterface::class);
+        $subscriptionProvider->method('getSubscriptionFor')->willReturn($subscription);
+
+        $subscriptionManager = new SubscriptionManager(
+            $this->createStub(SubscriptionRepositoryInterface::class),
+            $this->createStub(PlanRepositoryInterface::class),
+            $this->createStub(PaymentIntegrationInterface::class),
+        );
+
+        $companyRepository = $this->createMock(CompanyRepository::class);
+        $companyRepository->method('find')->willReturn(new Company());
+
+        $companySelector = new CompanySelector($this->createStub(ManagerRegistry::class));
+        new ReflectionProperty(CompanySelector::class, 'companyId')->setValue($companySelector, new Ulid());
+
+        $action = new ChoosePlanAction(
+            $planRepository,
+            $subscriptionManager,
+            $subscriptionProvider,
+            $companyRepository,
+            $companySelector,
+            $this->makeTelemetry(new CollectingMessageBus()),
+            new ExternalBillingPlanChangeGuard($subscriptionManager),
+        );
+
+        $csrfTokenManager = $this->createMock(CsrfTokenManagerInterface::class);
+        $csrfTokenManager->method('isTokenValid')->willReturn(true);
+
+        $recorder = new class() {
+            public ?string $lastRoute = null;
+
+            /** @var array<string, mixed> */
+            public array $lastParameters = [];
+        };
+
+        $router = $this->createMock(RouterInterface::class);
+        $router->method('generate')->willReturnCallback(
+            function (string $name, array $parameters = []) use ($recorder): string {
+                $recorder->lastRoute = $name;
+                $recorder->lastParameters = $parameters;
+
+                return '/' . $name;
+            },
+        );
+
+        $request = $this->makeRequest('');
+        $requestStack = new RequestStack([$request]);
+
+        $container = new Container();
+        $container->set('security.csrf.token_manager', $csrfTokenManager);
+        $container->set('router', $router);
+        $container->set('request_stack', $requestStack);
+
+        $action->setContainer($container);
+
+        return [$action, $recorder];
+    }
+
+    /**
      * @return array{0: ChoosePlanAction, 1: CollectingMessageBus}
      */
     private function buildAction(CollectingMessageBus $bus, Plan $plan): array
@@ -115,6 +208,7 @@ final class ChoosePlanActionTest extends TestCase
             $companyRepository,
             $companySelector,
             $this->makeTelemetry($bus),
+            new ExternalBillingPlanChangeGuard($subscriptionManager),
         );
 
         $csrfTokenManager = $this->createMock(CsrfTokenManagerInterface::class);

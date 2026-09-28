@@ -135,7 +135,7 @@
         "symfony/monolog-bundle": "^3.7",
         "symfony/object-mapper": "^7.1",
         "symfony/octopush-notifier": "^7.1",
-        "symfony/options-resolver": "^7.1",
+        "symfony/options-resolver": "^8.1",
         "symfony/ovh-cloud-notifier": "^7.1",
         "symfony/polyfill-mbstring": "^1.28",
         "symfony/polyfill-php83": "^1.28",

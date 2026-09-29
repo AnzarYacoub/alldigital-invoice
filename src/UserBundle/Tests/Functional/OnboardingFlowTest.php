@@ -346,29 +346,45 @@ final class OnboardingFlowTest extends WebTestCase
      * onboarded company, AND so SelectPlanAction actually renders the
      * picker instead of its own single-plan shortcut straight into
      * checkout (which would call out to HandyPay - out of scope here).
+     *
+     * Idempotent by planId: multiple tests in this class call this, and
+     * the SQLite test database is not guaranteed to be reset between them
+     * (it wasn't here - saas_plan rows from an earlier test in this class
+     * were still present, and a second raw insert of the same planId hit
+     * saas_plan's UNIQUE constraint). Upserting by planId - the same
+     * find-or-create idiom ProvisionSaasPlansCommand uses in production -
+     * guarantees exactly one starter-monthly and one business-monthly row
+     * with the right active/default/trial values, however many times this
+     * runs, rather than papering over it with a random/unique-per-test id
+     * that would stop the test data from representing the real plan ids.
      */
     private function seedPlans(): void
     {
         $trial = new DateInterval('P14D');
 
-        $starter = new Plan()
-            ->setName('Starter')
-            ->setPlanId('starter-monthly')
-            ->setPrice(1200)
-            ->setTrialDuration($trial)
-            ->setDefault(true)
-            ->setActive(true);
+        $this->upsertPlan('starter-monthly', 'Starter', 1200, $trial, default: true);
+        $this->upsertPlan('business-monthly', 'Business', 2500, $trial, default: false);
 
-        $business = new Plan()
-            ->setName('Business')
-            ->setPlanId('business-monthly')
-            ->setPrice(2500)
-            ->setTrialDuration($trial)
-            ->setActive(true);
-
-        $this->em->persist($starter);
-        $this->em->persist($business);
         $this->em->flush();
+    }
+
+    private function upsertPlan(string $planId, string $name, int $price, DateInterval $trial, bool $default): void
+    {
+        $repository = $this->em->getRepository(Plan::class);
+        $plan = $repository->findOneBy(['planId' => $planId]);
+
+        if (! $plan instanceof Plan) {
+            $plan = new Plan();
+            $plan->setPlanId($planId);
+            $this->em->persist($plan);
+        }
+
+        $plan
+            ->setName($name)
+            ->setPrice($price)
+            ->setTrialDuration($trial)
+            ->setDefault($default)
+            ->setActive(true);
     }
 
     private function createUser(string $email, string $password): User

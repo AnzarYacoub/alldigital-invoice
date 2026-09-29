@@ -1,24 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Method DoctrineMigrations\\Version20201\:\:getTableForeignKeys\(\) should return array\<array\<array\<string\>\|string\>\> but returns list\<array\<string, array\<string\>\|bool\|string\>\>\.$#'
-			identifier: return.type
-			count: 1
-			path: migrations/Version20201.php
-
-		-
-			message: '#^Access to constant NAME on an unknown class Ramsey\\Uuid\\Doctrine\\UuidBinaryOrderedTimeType\.$#'
-			identifier: class.notFound
-			count: 1
-			path: migrations/Version20300.php
-
-		-
-			message: '#^Class Ramsey\\Uuid\\Doctrine\\UuidBinaryOrderedTimeType not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: migrations/Version20300.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1

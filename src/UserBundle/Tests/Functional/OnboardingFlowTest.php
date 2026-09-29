@@ -119,7 +119,7 @@ final class OnboardingFlowTest extends WebTestCase
             ->interceptRedirects()
             ->click('Create & View My Invoice')
             // Must be sent to choose a plan, not straight to the invoice.
-            ->assertRedirectedTo('/subscription/plans')
+            ->assertRedirectedTo('/billing/subscription/plans')
         ;
 
         // Refresh user
@@ -173,7 +173,7 @@ final class OnboardingFlowTest extends WebTestCase
             ->interceptRedirects()
             ->click('Go to Dashboard')
             // Must be sent to choose a plan, not straight to the dashboard.
-            ->assertRedirectedTo('/subscription/plans')
+            ->assertRedirectedTo('/billing/subscription/plans')
         ;
 
         // Verify both client and invoice were skipped
@@ -222,7 +222,7 @@ final class OnboardingFlowTest extends WebTestCase
             ->interceptRedirects()
             ->click('Go to Dashboard')
             // Must be sent to choose a plan, not straight to the dashboard.
-            ->assertRedirectedTo('/subscription/plans')
+            ->assertRedirectedTo('/billing/subscription/plans')
         ;
 
         // Verify only invoice was skipped

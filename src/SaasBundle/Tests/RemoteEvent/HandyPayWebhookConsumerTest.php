@@ -515,10 +515,17 @@ final class HandyPayWebhookConsumerTest extends TestCase
     private function makeConsumer(Subscription $subscription, Ulid $subscriptionId): HandyPayWebhookConsumer
     {
         $subscriptionRepository = $this->createMock(SubscriptionRepositoryInterface::class);
+        // willReturnCallback() instead of ->with(...)->willReturn(...): PHPStan
+        // (with this PHPUnit version's split Stub/InvocationStubber builder
+        // interfaces) cannot resolve with() chained directly off method()
+        // here. A callback keeps the exact same behaviour - $subscription is
+        // returned only for this specific criteria, null otherwise - without
+        // relying on that chain.
         $subscriptionRepository
             ->method('findOneBy')
-            ->with(['id' => $subscriptionId])
-            ->willReturn($subscription);
+            ->willReturnCallback(
+                static fn (array $criteria): ?Subscription => $criteria === ['id' => $subscriptionId] ? $subscription : null,
+            );
         $subscriptionRepository->method('save');
 
         $subscriptionManager = new SubscriptionManager(

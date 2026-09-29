@@ -185,7 +185,11 @@ final readonly class RequestListener implements EventSubscriberInterface
                 'Renew Subscription',
                 $checkoutUrl,
             ],
-            $subscription->getStatus() === SubscriptionStatus::TRIAL && $hasExternalBilling => [
+            // Status here is guaranteed TRIAL, not just "not CANCELLED": the
+            // early guard above only lets TRIAL or CANCELLED through, and
+            // CANCELLED is already matched by the first arm - so comparing
+            // getStatus() again is redundant (PHPStan correctly flags it).
+            $hasExternalBilling => [
                 'info',
                 'tabler:clock',
                 'Free Trial Active',

@@ -26,7 +26,6 @@ use Symfony\Component\Webhook\Client\AbstractRequestParser;
 use Symfony\Component\Webhook\Exception\RejectWebhookException;
 use function hash_equals;
 use function hash_hmac;
-use function is_array;
 use function is_string;
 use function str_starts_with;
 use function substr;
@@ -95,7 +94,7 @@ final class HandyPayRequestParser extends AbstractRequestParser
     }
 
     #[Override]
-    protected function doParse(Request $request, #[SensitiveParameter] string $secret): ?RemoteEvent
+    protected function doParse(Request $request, #[SensitiveParameter] string $secret): RemoteEvent
     {
         // Symfony's HeaderBag lookup is case-insensitive, so this also
         // matches a lowercase `x-payment-signature` / `x-handypay-signature`
@@ -125,9 +124,12 @@ final class HandyPayRequestParser extends AbstractRequestParser
             throw new RejectWebhookException(Response::HTTP_UNAUTHORIZED, 'Invalid HandyPay webhook signature.');
         }
 
+        // InputBag::all() already returns array (never anything else), so
+        // the is_array() check PHPStan flagged as redundant is gone - the
+        // required-field validation below is unchanged.
         $payload = $request->getPayload()->all();
 
-        if (! is_array($payload) || ! isset($payload['type'], $payload['id'])) {
+        if (! isset($payload['type'], $payload['id'])) {
             throw new RejectWebhookException(Response::HTTP_BAD_REQUEST, 'Request payload does not contain required fields.');
         }
 

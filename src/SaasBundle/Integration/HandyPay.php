@@ -250,7 +250,9 @@ final class HandyPay implements PaymentIntegrationInterface
         }
 
         $data = $this->decode($response, 'list subscription products');
-        $products = $data['subscription_products'] ?? $data['products'] ?? $data ?? [];
+        // decode() returns array (never null), so the trailing '?? []' was
+        // dead code - $data is always a valid fallback on its own.
+        $products = $data['subscription_products'] ?? $data['products'] ?? $data;
 
         if (! is_array($products)) {
             return;

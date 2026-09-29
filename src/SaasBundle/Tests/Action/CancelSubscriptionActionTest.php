@@ -26,6 +26,7 @@ use SolidInvoice\SaasBundle\Action\CancelSubscriptionAction;
 use SolidWorx\Platform\SaasBundle\Entity\Plan;
 use SolidWorx\Platform\SaasBundle\Entity\Subscription;
 use SolidWorx\Platform\SaasBundle\Enum\SubscriptionStatus;
+use SolidWorx\Platform\SaasBundle\Exception\PaymentIntegrationException;
 use SolidWorx\Platform\SaasBundle\Integration\PaymentIntegrationInterface;
 use SolidWorx\Platform\SaasBundle\Repository\PlanRepositoryInterface;
 use SolidWorx\Platform\SaasBundle\Repository\SubscriptionRepositoryInterface;
@@ -103,6 +104,40 @@ final class CancelSubscriptionActionTest extends TestCase
 
         self::assertSame(SubscriptionStatus::CANCELLED, $subscription->getStatus());
         self::assertNotEmpty($session->getFlashBag()->get('success'));
+    }
+
+    /**
+     * A real HandyPay cancellation failure (PaymentIntegrationException,
+     * which extends RuntimeException) must NOT be treated as "no external
+     * subscription id yet" - the two catch blocks must stay in the right
+     * order (PaymentIntegrationException before the broader
+     * RuntimeException) or every real upstream cancellation failure would
+     * be silently swallowed and the subscription marked cancelled locally
+     * even though HandyPay never actually cancelled it.
+     */
+    public function testPaymentIntegrationExceptionDoesNotCancelLocally(): void
+    {
+        $subscription = $this->makeSubscription('sub_real123');
+        $statusBeforeAttempt = $subscription->getStatus();
+
+        $paymentIntegration = $this->createMock(PaymentIntegrationInterface::class);
+        $paymentIntegration->method('cancelAtPeriodEnd')->willThrowException(
+            new PaymentIntegrationException('HandyPay did not return a recognisable period-end field.'),
+        );
+
+        $subscriptionRepository = $this->createMock(SubscriptionRepositoryInterface::class);
+        $subscriptionRepository->expects(self::never())->method('save');
+
+        [$action, $session] = $this->buildAction($subscription, $subscriptionRepository, $paymentIntegration);
+
+        $action($this->makeRequest());
+
+        // Status is unchanged - specifically NOT CANCELLED - and the
+        // external id (the historical billing record) is untouched.
+        self::assertSame($statusBeforeAttempt, $subscription->getStatus());
+        self::assertSame('sub_real123', $subscription->getSubscriptionId());
+        self::assertEmpty($session->getFlashBag()->get('success'));
+        self::assertNotEmpty($session->getFlashBag()->get('error'));
     }
 
     private function makeSubscription(?string $externalSubscriptionId): Subscription

@@ -84,14 +84,21 @@ final class CancelSubscriptionAction extends AbstractController
                 'Your subscription has been cancelled and will end on %s. You will not be charged again.',
                 $endsAt->format('M j, Y'),
             ));
+        } catch (PaymentIntegrationException $e) {
+            // PaymentIntegrationException extends RuntimeException, so this
+            // must be caught before the broader RuntimeException below -
+            // otherwise every real HandyPay cancellation failure (bad
+            // response shape, HTTP error, etc.) would be swallowed by that
+            // catch and silently treated as "no external subscription id
+            // yet", marking the subscription cancelled locally even though
+            // the upstream cancellation never actually happened.
+            $this->addFlash('error', sprintf('Could not cancel your subscription: %s', $e->getMessage()));
         } catch (RuntimeException) {
             // No external subscription id yet (e.g. checkout was started but
             // never confirmed by a HandyPay webhook) — nothing to cancel
             // upstream, so it is safe to just mark it cancelled locally.
             $this->subscriptionManager->cancelSubscription($subscription, $subscription->getEndDate());
             $this->addFlash('success', 'Your subscription has been cancelled.');
-        } catch (PaymentIntegrationException $e) {
-            $this->addFlash('error', sprintf('Could not cancel your subscription: %s', $e->getMessage()));
         }
 
         return $this->redirectToRoute('billing_index');

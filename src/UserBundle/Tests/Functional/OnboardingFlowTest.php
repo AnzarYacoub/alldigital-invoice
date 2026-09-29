@@ -14,11 +14,13 @@ declare(strict_types=1);
 namespace SolidInvoice\UserBundle\Tests\Functional;
 
 use DateInterval;
+use Override;
 use PHPUnit\Framework\Attributes\Group;
 use SolidInvoice\CoreBundle\Test\Factory\CompanyFactory;
 use SolidInvoice\CoreBundle\Test\Traits\DoctrineTestTrait;
 use SolidInvoice\InstallBundle\Test\EnsureApplicationInstalled;
 use SolidInvoice\InvoiceBundle\Entity\Invoice;
+use SolidInvoice\SaasBundle\Tests\SaasTestKernel;
 use SolidInvoice\UserBundle\Entity\User;
 use SolidInvoice\UserBundle\Enum\UserSettingType;
 use SolidInvoice\UserBundle\Onboarding\Manager\OnboardingManager;
@@ -31,6 +33,23 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Zenstruck\Browser\Test\HasBrowser;
 use Zenstruck\Foundry\Test\Factories;
 
+/**
+ * Boots with SOLIDINVOICE_PLATFORM=saas via SaasTestKernel (see
+ * createKernel() below) rather than the default test kernel. This whole
+ * class is about onboarding's interaction with SaaS billing - three tests
+ * seed plans and assert the plan-selection redirect the launch-blocker
+ * fix added, and the rest exercise the same Onboarding action/OnboardingManager
+ * those three do, just without reaching the billing-gated branch. Testing
+ * all of them under the SaaS-enabled container matches how this app
+ * actually runs in every real deployment (SOLIDINVOICE_PLATFORM=saas is
+ * always set outside the default test kernel - see OnboardingManager's
+ * constructor docblock), rather than a container shape (SaaS bundle
+ * absent) that never occurs outside `phpunit` with no env override. This
+ * mirrors the existing SaasTestKernel usage in
+ * SolidInvoice\SaasBundle\Tests\Email\OnboardingEmailSnapshotTest and
+ * SolidInvoice\SaasBundle\Tests\Functional\FeatureCatalogTest - it isn't
+ * a new pattern.
+ */
 #[Group('functional')]
 final class OnboardingFlowTest extends WebTestCase
 {
@@ -40,6 +59,18 @@ final class OnboardingFlowTest extends WebTestCase
     use EnsureApplicationInstalled;
 
     private UserSettingRepository $userSettingRepository;
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    #[Override]
+    protected static function createKernel(array $options = []): SaasTestKernel
+    {
+        $env = $options['environment'] ?? $_ENV['SOLIDINVOICE_ENV'] ?? $_SERVER['SOLIDINVOICE_ENV'] ?? 'test';
+        $debug = $options['debug'] ?? (bool) ($_ENV['SOLIDINVOICE_DEBUG'] ?? $_SERVER['SOLIDINVOICE_DEBUG'] ?? true);
+
+        return new SaasTestKernel($env, $debug);
+    }
 
     protected function setUp(): void
     {

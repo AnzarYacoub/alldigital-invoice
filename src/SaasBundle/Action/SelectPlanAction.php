@@ -91,7 +91,14 @@ final class SelectPlanAction extends AbstractController
             'plans' => $plans,
             'tiers' => $this->planTierGrouper->groupByTier($plans),
             'subscription' => $subscription,
-            'currentPlanId' => $subscription instanceof Subscription && ! $isCancelled ? $subscription->getPlan()->getPlanId() : null,
+            'currentPlanId' => $subscription instanceof Subscription
+                && $subscription->isExternallyBilled()
+                && in_array($subscription->getStatus(), [
+                    SubscriptionStatus::TRIAL,
+                    SubscriptionStatus::ACTIVE,
+                ], true)
+                    ? $subscription->getPlan()->getPlanId()
+                    : null,
             'isCancelled' => $isCancelled,
             'previousPlanId' => $previousPlanId,
         ]);

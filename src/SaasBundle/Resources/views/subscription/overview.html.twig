@@ -75,7 +75,7 @@
                         {% elseif not isFree %}
                             <strong>{{ '%count% days left in your trial'|trans({'%count%': trialDaysRemaining}) }}</strong> —
                             {{ 'Your card will be charged %price% on %date% unless you cancel before then.'|trans({
-                                '%price%': plan.price|formatCurrency('USD'),
+                                '%price%': plan.price|formatCurrency('GYD'),
                                 '%date%': subscription.endDate|date('M j, Y'),
                             }) }}
                         {% else %}
@@ -128,7 +128,17 @@
                             <span class="text-secondary">{{ 'Free'|trans }}</span>
                         {% else %}
                             <span class="text-secondary">
-                                <strong>{{ plan.price|formatCurrency('USD') }}</strong>{{ plan.planId ends with '-annual' ? '/year'|trans : '/month'|trans }}
+                                <strong>GYD {{ (plan.price / 100)|number_format(0, '.', ',') }}</strong>{{ plan.planId ends with '-annual' ? '/year'|trans : '/month'|trans }}
+                                <span class="ms-2">
+                                    ≈ US${{ {
+                                        'starter-monthly': '12',
+                                        'starter-annual': '120',
+                                        'business-monthly': '25',
+                                        'business-annual': '250',
+                                        'branded-monthly': '40',
+                                        'branded-annual': '400'
+                                    }[plan.planId]|default('') }}
+                                </span>
                             </span>
                         {% endif %}
                     </div>

@@ -23,6 +23,7 @@ use SolidInvoice\UserBundle\Entity\User;
 use SolidWorx\Platform\SaasBundle\Entity\Plan;
 use SolidWorx\Platform\SaasBundle\Entity\Subscription;
 use SolidWorx\Platform\SaasBundle\Enum\SubscriptionStatus;
+use SolidWorx\Platform\SaasBundle\Exception\PaymentIntegrationException;
 use SolidWorx\Platform\SaasBundle\Integration\Options;
 use SolidWorx\Platform\SaasBundle\Repository\PlanRepositoryInterface;
 use SolidWorx\Platform\SaasBundle\Subscription\SubscriptionManager;
@@ -129,7 +130,7 @@ class SubscribeController extends AbstractController
         try {
             $checkoutUrl = $this->subscriptionManager
                 ->getCheckoutUrl($subscription, $options);
-        } catch (HttpExceptionInterface | TransportExceptionInterface) {
+        } catch (PaymentIntegrationException | HttpExceptionInterface | TransportExceptionInterface) {
             $this->telemetry->event(TelemetryEvent::SaasCheckoutFailed, ['plan' => $planName]);
             $this->addFlash('error', 'Unable to create checkout session. Please try again later.');
 

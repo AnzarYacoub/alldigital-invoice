@@ -91,7 +91,9 @@ final class ChangePlanAction extends AbstractController
             'plans' => $plans,
             'tiers' => $this->planTierGrouper->groupByTier($plans),
             'subscription' => $subscription,
-            'currentPlanId' => $isCancelled ? null : $subscription->getPlan()->getPlanId(),
+            'currentPlanId' => ! $isCancelled && $subscription->isExternallyBilled()
+                ? $subscription->getPlan()->getPlanId()
+                : null,
             'isCancelled' => $isCancelled,
             'previousPlanId' => $previousPlanId,
         ]);

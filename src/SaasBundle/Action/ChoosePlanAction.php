@@ -71,7 +71,10 @@ final class ChoosePlanAction extends AbstractController
             return $this->redirectToRoute('_dashboard');
         }
 
-        if ($subscription->getStatus() === SubscriptionStatus::ACTIVE) {
+        if (
+            $subscription->getStatus() === SubscriptionStatus::ACTIVE
+            && $subscription->isExternallyBilled()
+        ) {
             return $this->redirectToRoute('billing_index');
         }
 
@@ -95,7 +98,11 @@ final class ChoosePlanAction extends AbstractController
         // must be allowed through exactly like picking a different plan
         // (see ExternalBillingPlanChangeGuard below, which also stands down
         // for a CANCELLED subscription).
-        if ($subscription->getStatus() !== SubscriptionStatus::CANCELLED && $subscription->getPlan()->getPlanId() === $plan->getPlanId()) {
+        if (
+            $subscription->isExternallyBilled()
+            && $subscription->getStatus() !== SubscriptionStatus::CANCELLED
+            && $subscription->getPlan()->getPlanId() === $plan->getPlanId()
+        ) {
             return $this->redirectToRoute('billing_index');
         }
 

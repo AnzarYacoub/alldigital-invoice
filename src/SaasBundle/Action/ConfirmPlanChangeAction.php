@@ -71,7 +71,11 @@ final class ConfirmPlanChangeAction extends AbstractController
         // be allowed through as a resubscribe, exactly like picking a
         // different plan (see ExternalBillingPlanChangeGuard below, which
         // also stands down for a CANCELLED subscription).
-        if ($subscription->getStatus() !== SubscriptionStatus::CANCELLED && $plan->getPlanId() === $subscription->getPlan()->getPlanId()) {
+        if (
+            $subscription->isExternallyBilled()
+            && $subscription->getStatus() !== SubscriptionStatus::CANCELLED
+            && $plan->getPlanId() === $subscription->getPlan()->getPlanId()
+        ) {
             return $this->redirectToRoute('billing_index');
         }
 

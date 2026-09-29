@@ -106,16 +106,30 @@
                         <div class="plan-card-price mb-3">
                             {% if monthlyPlan %}
                                 <span data-billing-interval-target="monthlyPrice">
-                                    <span class="display-5 fw-bold">{{ monthlyPlan.price|formatCurrency('USD') }}</span>
+                                    <span class="display-5 fw-bold">GYD {{ (monthlyPlan.price / 100)|number_format(0, '.', ',') }}</span>
                                     <span class="text-secondary">{{ '/month'|trans }}</span>
+                                    <div class="text-secondary small mt-1">
+                                        ≈ US${{ {
+                                            'starter-monthly': '12',
+                                            'business-monthly': '25',
+                                            'branded-monthly': '40'
+                                        }[monthlyPlan.planId]|default('') }}
+                                    </div>
                                 </span>
                             {% endif %}
                             {% if annualPlan %}
                                 <div class="{{ monthlyPlan ? 'd-none' : '' }}" data-billing-interval-target="annualPrice">
-                                    <span class="display-5 fw-bold">{{ annualPlan.price|formatCurrency('USD') }}</span>
+                                    <span class="display-5 fw-bold">GYD {{ (annualPlan.price / 100)|number_format(0, '.', ',') }}</span>
                                     <span class="text-secondary">{{ '/year'|trans }}</span>
+                                    <div class="text-secondary small mt-1">
+                                        ≈ US${{ {
+                                            'starter-annual': '120',
+                                            'business-annual': '250',
+                                            'branded-annual': '400'
+                                        }[annualPlan.planId]|default('') }}
+                                    </div>
                                     <div class="text-secondary small">
-                                        {{ (annualPlan.price / 12)|formatCurrency('USD') }} {{ '/month equivalent'|trans }}
+                                        GYD {{ (annualPlan.price / 1200)|number_format(0, '.', ',') }} {{ '/month equivalent'|trans }}
                                     </div>
                                 </div>
                             {% endif %}

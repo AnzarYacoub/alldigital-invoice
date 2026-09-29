@@ -19,14 +19,12 @@ use PHPUnit\Framework\TestCase;
 use SolidInvoice\CoreBundle\Company\CompanySelectorInterface;
 use SolidInvoice\CoreBundle\Listener\EmailFromListener;
 use SolidInvoice\SettingsBundle\SystemConfig;
-use SolidInvoice\UserBundle\Entity\User;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\Envelope;
 use Symfony\Component\Mailer\Event\MessageEvent;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\RawMessage;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Uid\Ulid;
 
 final class EmailFromListenerTest extends TestCase
@@ -112,7 +110,18 @@ final class EmailFromListenerTest extends TestCase
         self::assertSame('billing@tenant-a.example.com', $envelope->getSender()->getAddress());
     }
 
-    public function testWithoutFromAddress(): void
+    /**
+     * Launch-blocker regression: an active company with no `email/from_address`
+     * configured must NOT fall back to the currently authenticated user's own
+     * personal email address (that used to happen here). This SaaS's global
+     * transport only accepts mail from its own verified sending domain, so an
+     * arbitrary user's personal address is always rejected by the provider.
+     * The listener must leave From/Sender completely untouched instead,
+     * letting Symfony Mailer's EnvelopeListener apply the platform-wide,
+     * always-verified SOLIDINVOICE_MAILER_SENDER default — the token storage
+     * must not even be consulted in this branch any more.
+     */
+    public function testActiveCompanyWithBlankFromAddressLeavesFromUnset(): void
     {
         $systemConfig = M::mock(SystemConfig::class);
 
@@ -120,22 +129,8 @@ final class EmailFromListenerTest extends TestCase
             ->with('email/from_address')
             ->andReturn(null);
 
-        $token = M::mock(TokenInterface::class);
-
-        $user = new User();
-        $user->setEmail('test@example.com');
-
-        $token->shouldReceive('getUser')
-            ->once()
-            ->withNoArgs()
-            ->andReturn($user);
-
         $tokenStorage = M::mock(TokenStorageInterface::class);
-
-        $tokenStorage->shouldReceive('getToken')
-            ->once()
-            ->withNoArgs()
-            ->andReturn($token);
+        $tokenStorage->shouldNotReceive('getToken');
 
         $listener = new EmailFromListener($systemConfig, $tokenStorage, $this->activeCompanySelector());
 
@@ -143,8 +138,40 @@ final class EmailFromListenerTest extends TestCase
         $envelope = Envelope::create($message);
         $listener(new MessageEvent($message, $envelope, 'smtp'));
 
-        self::assertEquals([new Address('test@example.com')], $message->getFrom());
-        self::assertSame('test@example.com', $envelope->getSender()->getAddress());
+        self::assertSame([], $message->getFrom());
+    }
+
+    /**
+     * Launch-blocker regression, the exact scenario reproduced live: every
+     * existing installation's `app_config` table was seeded at install time
+     * (migrations-archive/solidinvoice-3.0.1-history/Version20000.php) with
+     * `email/from_address` = 'no-reply@solidinvoice.co' — the open-source
+     * project's own domain, never verified with this SaaS's own
+     * transactional mail provider. Companies that never explicitly changed
+     * this setting still have that literal value persisted, and using it as
+     * a real sender gets every invoice/quote email rejected by the provider
+     * ("550 The solidinvoice.co domain is not verified..."). It must be
+     * treated exactly like a blank address: From/Sender left untouched, and
+     * no fallback to the authenticated user's own address either.
+     */
+    public function testActiveCompanyWithLegacyPlaceholderFromAddressLeavesFromUnset(): void
+    {
+        $systemConfig = M::mock(SystemConfig::class);
+
+        $systemConfig->shouldReceive('get')
+            ->with('email/from_address')
+            ->andReturn('no-reply@solidinvoice.co');
+
+        $tokenStorage = M::mock(TokenStorageInterface::class);
+        $tokenStorage->shouldNotReceive('getToken');
+
+        $listener = new EmailFromListener($systemConfig, $tokenStorage, $this->activeCompanySelector());
+
+        $message = new TemplatedEmail();
+        $envelope = Envelope::create($message);
+        $listener(new MessageEvent($message, $envelope, 'smtp'));
+
+        self::assertSame([], $message->getFrom());
     }
 
     public function testDoesNothingForNonEmailMessages(): void

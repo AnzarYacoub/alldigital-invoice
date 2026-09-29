@@ -94,21 +94,51 @@ final readonly class EmailFromListener implements EventSubscriberInterface
         }
     }
 
+    // The historic installer/migration for every existing installation of
+    // this app (migrations-archive/solidinvoice-3.0.1-history/Version20000.php)
+    // seeded `email/from_address` with this literal placeholder at install
+    // time. SettingsBundle\Config\ConfigProvider's own default was later
+    // changed to null for *new* installs/companies, but that code-level
+    // default only applies when no row exists yet — it does nothing for a
+    // row a migration already persisted, so this exact string is still
+    // sitting in the settings table for companies that have never
+    // explicitly changed it. It's the SolidInvoice open-source project's
+    // own domain, never verified with this SaaS's own transactional mail
+    // provider, so treating it as a real, usable sender causes every send
+    // to be rejected by the provider (confirmed live: "550 The
+    // solidinvoice.co domain is not verified..."). Treated identically to
+    // a blank address below.
+    private const string LEGACY_PLACEHOLDER_FROM_ADDRESS = 'no-reply@solidinvoice.co';
+
     private function applyCompanySender(Email $message, MessageEvent $event): void
     {
         $fromAddress = (string) $this->config->get('email/from_address');
 
-        if ('' !== $fromAddress) {
-            $fromName = (string) $this->config->get('email/from_name');
-            $from = new Address($fromAddress, $fromName);
-            $message->from($from);
-            $event->getEnvelope()->setSender($from);
-            $message->getHeaders()->remove('Sender');
-
+        if ('' === $fromAddress || self::LEGACY_PLACEHOLDER_FROM_ADDRESS === $fromAddress) {
+            // No usable company-specific sender configured. Do NOT fall
+            // back to the currently authenticated user's own personal
+            // email address here (that used to happen via
+            // applyAuthenticatedUserFallback()): this SaaS's global
+            // transport (SOLIDINVOICE_MAILER_DSN, see
+            // config/packages/mailer.php) is a provider that only accepts
+            // mail from its own verified sending domain, and an arbitrary
+            // customer's personal address (or the legacy placeholder
+            // above) is never one of those — every invoice/quote email a
+            // company without its own configured mail provider tries to
+            // send would otherwise be rejected outright by the transport.
+            // Leaving the message's From/envelope sender completely unset
+            // here lets Symfony Mailer's own EnvelopeListener apply the
+            // platform-wide, always-verified SOLIDINVOICE_MAILER_SENDER
+            // default instead — the same fallback already used
+            // successfully today for anonymous flows like password reset.
             return;
         }
 
-        $this->applyAuthenticatedUserFallback($message, $event);
+        $fromName = (string) $this->config->get('email/from_name');
+        $from = new Address($fromAddress, $fromName);
+        $message->from($from);
+        $event->getEnvelope()->setSender($from);
+        $message->getHeaders()->remove('Sender');
     }
 
     private function applyAuthenticatedUserFallback(Email $message, MessageEvent $event): void

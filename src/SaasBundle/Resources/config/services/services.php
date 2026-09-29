@@ -19,6 +19,8 @@ use SolidInvoice\SaasBundle\Feature\UpgradePromptRenderer;
 use SolidInvoice\SaasBundle\Integration\HandyPay;
 use SolidInvoice\SaasBundle\SolidInvoiceSaasBundle;
 use SolidWorx\Platform\SaasBundle\Integration\PaymentIntegrationInterface;
+use SolidWorx\Platform\SaasBundle\Subscription\SubscriptionManager;
+use SolidWorx\Platform\SaasBundle\Subscription\SubscriptionProviderInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 
 return static function (ContainerConfigurator $containerConfigurator): void {
@@ -56,5 +58,18 @@ return static function (ContainerConfigurator $containerConfigurator): void {
     $services->alias(
         PaymentIntegrationInterface::class,
         HandyPay::class,
+    );
+
+    // Explicit alias for OnboardingManager's (UserBundle) nullable
+    // SubscriptionProviderInterface dependency. Not strictly required for
+    // this to autowire - SubscriptionManager is the only service
+    // implementing this interface, and Symfony resolves an unaliased
+    // interface automatically in that case - but it's made explicit here,
+    // matching the PaymentIntegrationInterface/EmailVerificationGateInterface
+    // aliases above, so this doesn't depend on "exactly one implementation"
+    // staying true as the vendor package evolves.
+    $services->alias(
+        SubscriptionProviderInterface::class,
+        SubscriptionManager::class,
     );
 };

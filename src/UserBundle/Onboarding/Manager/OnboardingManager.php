@@ -46,7 +46,21 @@ final readonly class OnboardingManager
         private ClientRepository $clientRepository,
         private InvoiceRepository $invoiceRepository,
         private UserSettingRepository $userSettingRepository,
-        private SubscriptionProviderInterface $subscriptionProvider,
+        // Nullable: SolidWorx\Platform\SaasBundle\SubscriptionProviderInterface
+        // is only registered when SOLIDINVOICE_PLATFORM=saas (see
+        // config/bundles.php). UserBundle - and this service - are always
+        // loaded, in every environment, including the default test kernel,
+        // where SOLIDINVOICE_PLATFORM is not set (Symfony's Dotenv
+        // intentionally skips .env.local, which is where it's set, when
+        // APP_ENV=test). A required, non-nullable dependency here would
+        // make the whole container fail to compile whenever the SaaS
+        // bundle isn't active. Symfony leaves an unresolvable nullable
+        // autowired argument as null instead of throwing, so this degrades
+        // to hasExternallyBilledSubscription() safely returning false
+        // (see below) rather than breaking onboarding/registration
+        // entirely. In every real deployment of this app,
+        // SOLIDINVOICE_PLATFORM=saas is set and this is never null.
+        private ?SubscriptionProviderInterface $subscriptionProvider = null,
     ) {
     }
 
@@ -86,6 +100,10 @@ final readonly class OnboardingManager
      */
     public function hasExternallyBilledSubscription(User $user): bool
     {
+        if (! $this->subscriptionProvider instanceof SubscriptionProviderInterface) {
+            return false;
+        }
+
         $company = $user->getCompanies()->last();
 
         if (! $company instanceof Company) {

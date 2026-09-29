@@ -372,6 +372,34 @@ final class OnboardingManagerTest extends KernelTestCase
         self::assertFalse($this->manager->hasExternallyBilledSubscription($user));
     }
 
+    /**
+     * SubscriptionProviderInterface is only registered as a service when
+     * SOLIDINVOICE_PLATFORM=saas (see config/bundles.php); OnboardingManager
+     * is instantiated in every environment regardless, so the constructor
+     * argument is nullable. When it's null - the SaaS bundle isn't active -
+     * this must degrade to "not externally billed" rather than a fatal
+     * error, exactly like the no-subscription-found case above.
+     */
+    public function testHasExternallyBilledSubscriptionReturnsFalseWhenSubscriptionProviderNotWired(): void
+    {
+        $user = $this->createUser('no-saas-bundle@example.com');
+        $this->em->persist($user);
+        $this->em->flush();
+
+        $manager = new OnboardingManager(
+            $this->em,
+            self::getContainer()->get(CompanyRepository::class),
+            $this->clientRepository,
+            $this->invoiceRepository,
+            $this->userSettingRepository,
+            null,
+        );
+
+        $manager->completeOnboarding($user, $this->minimalOnboardingData('No SaaS Bundle Co'));
+
+        self::assertFalse($manager->hasExternallyBilledSubscription($user));
+    }
+
     private function minimalOnboardingData(string $companyName): OnboardingData
     {
         $data = new OnboardingData();

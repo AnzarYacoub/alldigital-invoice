@@ -13,18 +13,19 @@ declare(strict_types=1);
 
 namespace SolidInvoice\UserBundle\Tests\Functional;
 
+use DateInterval;
 use PHPUnit\Framework\Attributes\Group;
 use SolidInvoice\CoreBundle\Test\Factory\CompanyFactory;
 use SolidInvoice\CoreBundle\Test\Traits\DoctrineTestTrait;
 use SolidInvoice\InstallBundle\Test\EnsureApplicationInstalled;
 use SolidInvoice\InvoiceBundle\Entity\Invoice;
-use SolidInvoice\InvoiceBundle\Repository\InvoiceRepository;
 use SolidInvoice\UserBundle\Entity\User;
 use SolidInvoice\UserBundle\Enum\UserSettingType;
 use SolidInvoice\UserBundle\Onboarding\Manager\OnboardingManager;
 use SolidInvoice\UserBundle\Repository\UserRepository;
 use SolidInvoice\UserBundle\Repository\UserSettingRepository;
 use SolidInvoice\UserBundle\Test\Factory\UserFactory;
+use SolidWorx\Platform\SaasBundle\Entity\Plan;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Zenstruck\Browser\Test\HasBrowser;
@@ -45,8 +46,21 @@ final class OnboardingFlowTest extends WebTestCase
         $this->userSettingRepository = self::getContainer()->get(UserSettingRepository::class);
     }
 
+    /**
+     * Launch-blocker fix (requirement 1): a brand-new regular user's
+     * first-ever trial (silently started by SaasBundle's
+     * CompanyEventSubscriber when their company is created) is never
+     * externally billed - see OnboardingManager::hasExternallyBilledSubscription().
+     * Onboarding completion must therefore route through plan selection
+     * (saas_subscription_plans) instead of straight to the invoice/dashboard.
+     * Two active plans are seeded so SelectPlanAction actually renders the
+     * picker instead of its own single-plan shortcut into checkout, which
+     * would otherwise call out to HandyPay - out of scope for this test.
+     */
     public function testCompleteOnboardingWithAllSteps(): void
     {
+        $this->seedPlans();
+
         $user = $this->createUser('test@example.com', 'password');
 
         $this->browser()
@@ -73,10 +87,8 @@ final class OnboardingFlowTest extends WebTestCase
             ->fillField('onboarding[invoice][invoiceAmount]', '1500.00')
             ->interceptRedirects()
             ->click('Create & View My Invoice')
-            // Should redirect to invoice detail page
-            ->assertRedirectedTo('/invoices/view/' . self::getContainer()->get(InvoiceRepository::class)->findOneBy([])->getId()->toString())
-            ->followRedirect()
-            ->assertSeeIn('.alert-success', 'Your first invoice is ready!')
+            // Must be sent to choose a plan, not straight to the invoice.
+            ->assertRedirectedTo('/subscription/plans')
         ;
 
         // Refresh user
@@ -93,14 +105,23 @@ final class OnboardingFlowTest extends WebTestCase
         // Verify company was created
         self::assertCount(1, $user->getCompanies());
 
-        // Verify invoice was created
+        // Verify the invoice was still created - only the redirect target
+        // changed, not whether onboarding actually completes the data.
         $invoices = $this->em->getRepository(Invoice::class)->findBy(['company' => $user->getCompanies()->first()]);
         self::assertCount(1, $invoices);
         self::assertSame('Website Design', $invoices[0]->getLines()->first()->getDescription());
     }
 
+    /**
+     * Launch-blocker fix (requirement 1): same as
+     * testCompleteOnboardingWithAllSteps, but via the "skip everything"
+     * path - a first-ever trial must still route through plan selection
+     * rather than straight to the dashboard.
+     */
     public function testSkipClientStep(): void
     {
+        $this->seedPlans();
+
         $user = $this->createUser('test2@example.com', 'password');
 
         $this->browser()
@@ -120,9 +141,8 @@ final class OnboardingFlowTest extends WebTestCase
             ->assertSee("You're all set!")
             ->interceptRedirects()
             ->click('Go to Dashboard')
-            ->assertRedirectedTo('/dashboard')
-            ->followRedirect()
-            ->assertSeeIn('.alert-success', 'Welcome to SolidInvoice!')
+            // Must be sent to choose a plan, not straight to the dashboard.
+            ->assertRedirectedTo('/subscription/plans')
         ;
 
         // Verify both client and invoice were skipped
@@ -136,8 +156,16 @@ final class OnboardingFlowTest extends WebTestCase
         self::assertContains('invoice', $skipped);
     }
 
+    /**
+     * Launch-blocker fix (requirement 1): same as
+     * testCompleteOnboardingWithAllSteps, but skipping only the invoice
+     * step - a first-ever trial must still route through plan selection
+     * rather than straight to the dashboard.
+     */
     public function testSkipInvoiceStepOnly(): void
     {
+        $this->seedPlans();
+
         $user = $this->createUser('test3@example.com', 'password');
 
         $this->browser()
@@ -162,9 +190,8 @@ final class OnboardingFlowTest extends WebTestCase
             ->assertSee("You're all set!")
             ->interceptRedirects()
             ->click('Go to Dashboard')
-            ->assertRedirectedTo('/dashboard')
-            ->followRedirect()
-            ->assertSeeIn('.alert-success', 'Welcome to SolidInvoice!')
+            // Must be sent to choose a plan, not straight to the dashboard.
+            ->assertRedirectedTo('/subscription/plans')
         ;
 
         // Verify only invoice was skipped
@@ -279,6 +306,38 @@ final class OnboardingFlowTest extends WebTestCase
             // Data should be preserved
             //->assertFieldEquals('onboarding[client][clientName]', 'Test Client')
         ;
+    }
+
+    /**
+     * Seeds two active plans (mirroring SaasBundle\DataFixtures\ORM\LoadPlans'
+     * real Starter/Business shape, minimally) so SaasBundle's
+     * CompanyEventSubscriber has a default plan to attach to a newly
+     * onboarded company, AND so SelectPlanAction actually renders the
+     * picker instead of its own single-plan shortcut straight into
+     * checkout (which would call out to HandyPay - out of scope here).
+     */
+    private function seedPlans(): void
+    {
+        $trial = new DateInterval('P14D');
+
+        $starter = new Plan()
+            ->setName('Starter')
+            ->setPlanId('starter-monthly')
+            ->setPrice(1200)
+            ->setTrialDuration($trial)
+            ->setDefault(true)
+            ->setActive(true);
+
+        $business = new Plan()
+            ->setName('Business')
+            ->setPlanId('business-monthly')
+            ->setPrice(2500)
+            ->setTrialDuration($trial)
+            ->setActive(true);
+
+        $this->em->persist($starter);
+        $this->em->persist($business);
+        $this->em->flush();
     }
 
     private function createUser(string $email, string $password): User

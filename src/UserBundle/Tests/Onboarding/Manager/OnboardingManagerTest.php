@@ -25,6 +25,8 @@ use SolidInvoice\UserBundle\Enum\UserSettingType;
 use SolidInvoice\UserBundle\Onboarding\DTO\OnboardingData;
 use SolidInvoice\UserBundle\Onboarding\Manager\OnboardingManager;
 use SolidInvoice\UserBundle\Repository\UserSettingRepository;
+use SolidWorx\Platform\SaasBundle\Entity\Subscription;
+use SolidWorx\Platform\SaasBundle\Subscription\SubscriptionProviderInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 #[CoversClass(OnboardingManager::class)]
@@ -41,6 +43,16 @@ final class OnboardingManagerTest extends KernelTestCase
 
     private InvoiceRepository $invoiceRepository;
 
+    /**
+     * Mocked rather than the real service: hasExternallyBilledSubscription()
+     * is tested purely as manager-level logic here (does it correctly read
+     * whatever the provider returns), independent of how a Subscription
+     * actually gets persisted/associated with a Company in the vendor
+     * schema - that wiring is already covered by SaasBundle's own
+     * CompanyEventSubscriber/SubscribeController tests.
+     */
+    private SubscriptionProviderInterface&\PHPUnit\Framework\MockObject\MockObject $subscriptionProvider;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -49,6 +61,7 @@ final class OnboardingManagerTest extends KernelTestCase
         $companyRepository = self::getContainer()->get(CompanyRepository::class);
         $this->clientRepository = self::getContainer()->get(ClientRepository::class);
         $this->invoiceRepository = self::getContainer()->get(InvoiceRepository::class);
+        $this->subscriptionProvider = $this->createMock(SubscriptionProviderInterface::class);
 
         // Manually create OnboardingManager since it may not be public in test container
         $this->manager = new OnboardingManager(
@@ -56,7 +69,8 @@ final class OnboardingManagerTest extends KernelTestCase
             $companyRepository,
             $this->clientRepository,
             $this->invoiceRepository,
-            $this->userSettingRepository
+            $this->userSettingRepository,
+            $this->subscriptionProvider,
         );
     }
 
@@ -274,6 +288,97 @@ final class OnboardingManagerTest extends KernelTestCase
         self::assertNotNull($setting);
         self::assertSame('dismissed', $setting->getValue());
         self::assertTrue($this->manager->isOnboardingComplete($user));
+    }
+
+    /**
+     * Launch-blocker requirement 1/3 (new regular user): a freshly
+     * onboarded company with no subscription at all (e.g. no default plan
+     * configured) must be reported as NOT externally billed - the caller
+     * (Onboarding action) must send this user to choose a plan.
+     */
+    public function testHasExternallyBilledSubscriptionReturnsFalseWhenNoSubscriptionExists(): void
+    {
+        $user = $this->createUser('no-subscription@example.com');
+        $this->em->persist($user);
+        $this->em->flush();
+
+        $this->manager->completeOnboarding($user, $this->minimalOnboardingData('No Sub Co'));
+
+        $this->subscriptionProvider->method('getSubscriptionFor')->willReturn(null);
+
+        self::assertFalse($this->manager->hasExternallyBilledSubscription($user));
+    }
+
+    /**
+     * Launch-blocker requirement 1 (new regular user): a subscription that
+     * exists locally (e.g. the silently-granted first-ever trial) but was
+     * never actually checked out via HandyPay is NOT externally billed -
+     * this is the exact scenario the launch-blocker fix targets.
+     */
+    public function testHasExternallyBilledSubscriptionReturnsFalseForLocalOnlySubscription(): void
+    {
+        $user = $this->createUser('local-trial-only@example.com');
+        $this->em->persist($user);
+        $this->em->flush();
+
+        $this->manager->completeOnboarding($user, $this->minimalOnboardingData('Local Trial Co'));
+
+        // No setSubscriptionId() call: never checked out via HandyPay.
+        $subscription = new Subscription();
+
+        $this->subscriptionProvider->method('getSubscriptionFor')->willReturn($subscription);
+
+        self::assertFalse($this->manager->hasExternallyBilledSubscription($user));
+    }
+
+    /**
+     * Launch-blocker requirement 3 (existing active/trial externally billed
+     * subscription must not be sent into another checkout): once HandyPay
+     * has confirmed a real subscription id, hasExternallyBilledSubscription()
+     * must report true so the Onboarding action lets the user straight
+     * through to the dashboard/invoice instead of saas_subscription_plans.
+     */
+    public function testHasExternallyBilledSubscriptionReturnsTrueOnceExternallyBilled(): void
+    {
+        $user = $this->createUser('already-billed@example.com');
+        $this->em->persist($user);
+        $this->em->flush();
+
+        $this->manager->completeOnboarding($user, $this->minimalOnboardingData('Already Billed Co'));
+
+        $subscription = new Subscription();
+        $subscription->setSubscriptionId('sub_real_123');
+
+        $this->subscriptionProvider->method('getSubscriptionFor')->willReturn($subscription);
+
+        self::assertTrue($this->manager->hasExternallyBilledSubscription($user));
+    }
+
+    /**
+     * Defensive edge case: a user with no company at all (should not be
+     * reachable in practice - completeOnboarding() always adds one) must
+     * not be treated as externally billed, and the subscription provider
+     * must not even be consulted since there's no company to look one up
+     * for.
+     */
+    public function testHasExternallyBilledSubscriptionReturnsFalseWhenUserHasNoCompany(): void
+    {
+        $user = $this->createUser('no-company@example.com');
+        $this->em->persist($user);
+        $this->em->flush();
+
+        $this->subscriptionProvider->expects(self::never())->method('getSubscriptionFor');
+
+        self::assertFalse($this->manager->hasExternallyBilledSubscription($user));
+    }
+
+    private function minimalOnboardingData(string $companyName): OnboardingData
+    {
+        $data = new OnboardingData();
+        $data->companyName = $companyName;
+        $data->companyCurrency = 'USD';
+
+        return $data;
     }
 
     private function createUser(string $email): User

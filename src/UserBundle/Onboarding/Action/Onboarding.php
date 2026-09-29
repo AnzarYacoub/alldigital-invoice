@@ -69,8 +69,7 @@ final class Onboarding extends AbstractController
                     $form->reset();
 
                     if ($invoice instanceof Invoice) {
-                        $this->addFlash('success', 'onboarding.flash.invoice_created');
-                        return $this->redirectToRoute('_invoices_view', ['id' => $invoice->getId()]);
+                        return $this->redirectAfterOnboardingComplete($user, $invoice);
                     }
                 }
             } elseif ($form->isFinished()) {
@@ -83,15 +82,7 @@ final class Onboarding extends AbstractController
                 // Clear form data from session
                 $form->reset();
 
-                // If an invoice was created, redirect to invoice detail page
-                if ($invoice instanceof Invoice) {
-                    $this->addFlash('success', 'onboarding.flash.invoice_created');
-                    return $this->redirectToRoute('_invoices_view', ['id' => $invoice->getId()]);
-                }
-
-                // Otherwise, redirect to dashboard
-                $this->addFlash('success', 'onboarding.flash.onboarding_complete');
-                return $this->redirectToRoute('_dashboard');
+                return $this->redirectAfterOnboardingComplete($user, $invoice);
             } else {
                 $this->onboardingManager->setCurrentStep($user, $form->getCursor()->getCurrentStep());
             }
@@ -107,6 +98,42 @@ final class Onboarding extends AbstractController
             'progress' => $this->calculateProgress($form),
             'hasClient' => $formData->clientName !== null && $formData->clientName !== '',
         ]);
+    }
+
+    /**
+     * A *new, regular* user (never invited into an existing company) has
+     * just finished onboarding for the very first time: completeOnboarding()
+     * created their company a moment ago, which in turn (SaasBundle's
+     * CompanyEventSubscriber) created a local subscription and, for a
+     * genuinely first-ever trial, silently started it — all without the
+     * user ever visiting HandyPay checkout. Per the SaaS launch
+     * requirement, that's not allowed: everyone must go through
+     * Choose plan -> HandyPay checkout at least once. So unless this
+     * company's subscription is already externally billed (which a
+     * brand-new company's never is, but the check stays honest rather than
+     * assumed — see OnboardingManager::hasExternallyBilledSubscription()),
+     * send them to plan selection instead of the dashboard/invoice.
+     *
+     * Invited users never reach this method at all: their onboarding is
+     * already marked complete by OnboardingLoginListener at login, so
+     * __invoke()'s isOnboardingComplete() guard above redirects them to the
+     * dashboard before any of this form-flow logic runs. A user who already
+     * has a real HandyPay subscription (active or trial) for their company
+     * is likewise sent straight through, never back into checkout.
+     */
+    private function redirectAfterOnboardingComplete(User $user, ?Invoice $invoice): Response
+    {
+        if (! $this->onboardingManager->hasExternallyBilledSubscription($user)) {
+            return $this->redirectToRoute('saas_subscription_plans');
+        }
+
+        if ($invoice instanceof Invoice) {
+            $this->addFlash('success', 'onboarding.flash.invoice_created');
+            return $this->redirectToRoute('_invoices_view', ['id' => $invoice->getId()]);
+        }
+
+        $this->addFlash('success', 'onboarding.flash.onboarding_complete');
+        return $this->redirectToRoute('_dashboard');
     }
 
     /**

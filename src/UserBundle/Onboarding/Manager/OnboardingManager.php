@@ -30,6 +30,8 @@ use SolidInvoice\UserBundle\Entity\User;
 use SolidInvoice\UserBundle\Enum\UserSettingType;
 use SolidInvoice\UserBundle\Onboarding\DTO\OnboardingData;
 use SolidInvoice\UserBundle\Repository\UserSettingRepository;
+use SolidWorx\Platform\SaasBundle\Entity\Subscription;
+use SolidWorx\Platform\SaasBundle\Subscription\SubscriptionProviderInterface;
 use function json_decode;
 use function json_encode;
 
@@ -44,6 +46,7 @@ final readonly class OnboardingManager
         private ClientRepository $clientRepository,
         private InvoiceRepository $invoiceRepository,
         private UserSettingRepository $userSettingRepository,
+        private SubscriptionProviderInterface $subscriptionProvider,
     ) {
     }
 
@@ -58,6 +61,40 @@ final readonly class OnboardingManager
         ]);
 
         return in_array($setting?->getValue(), ['true', 'dismissed'], true);
+    }
+
+    /**
+     * Whether the user's most recently created company already has a real,
+     * externally billed subscription — i.e. has gone through HandyPay
+     * checkout at least once and HandyPay has confirmed a real `sub_...` id
+     * via webhook (see Subscription::isExternallyBilled(), the same check
+     * SubscribeController/ChoosePlanAction already use to guard against a
+     * duplicate checkout).
+     *
+     * Used immediately after completeOnboarding() to decide whether a
+     * brand-new regular user must be sent to choose a plan
+     * (saas_subscription_plans) before landing in the app, per the SaaS
+     * launch requirement that no one reaches the dashboard/invoice without
+     * ever visiting HandyPay checkout for their company. A user's company
+     * created moments ago by completeOnboarding() can never already be
+     * externally billed (that requires a HandyPay webhook round-trip which
+     * cannot complete within the same request) — this method exists mainly
+     * so that guarantee is expressed as an explicit, testable check rather
+     * than assumed, and so the same check can be reused safely if onboarding
+     * completion is ever reached for a company that already has one (for
+     * example a resubmitted request).
+     */
+    public function hasExternallyBilledSubscription(User $user): bool
+    {
+        $company = $user->getCompanies()->last();
+
+        if (! $company instanceof Company) {
+            return false;
+        }
+
+        $subscription = $this->subscriptionProvider->getSubscriptionFor($company);
+
+        return $subscription instanceof Subscription && $subscription->isExternallyBilled();
     }
 
     /**

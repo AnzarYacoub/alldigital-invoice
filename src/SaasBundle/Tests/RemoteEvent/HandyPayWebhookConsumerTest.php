@@ -521,10 +521,25 @@ final class HandyPayWebhookConsumerTest extends TestCase
         // here. A callback keeps the exact same behaviour - $subscription is
         // returned only for this specific criteria, null otherwise - without
         // relying on that chain.
+        //
+        // Comparing by toBase58(), not ===: HandyPayWebhookConsumer::
+        // resolveLocalSubscriptionId() rebuilds the id via
+        // Ulid::fromString($raw), which is a different Ulid object instance
+        // than $subscriptionId even when it's the same underlying value -
+        // strict array comparison (=== on the whole criteria array) compares
+        // objects by identity, so that always failed and made every test
+        // here go through the "unknown local subscription" no-op path
+        // instead of ever exercising the real update logic.
         $subscriptionRepository
             ->method('findOneBy')
             ->willReturnCallback(
-                static fn (array $criteria): ?Subscription => $criteria === ['id' => $subscriptionId] ? $subscription : null,
+                static function (array $criteria) use ($subscriptionId, $subscription): ?Subscription {
+                    $id = $criteria['id'] ?? null;
+
+                    return $id instanceof Ulid && $id->toBase58() === $subscriptionId->toBase58()
+                        ? $subscription
+                        : null;
+                },
             );
         $subscriptionRepository->method('save');
 
